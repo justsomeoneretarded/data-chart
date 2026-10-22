@@ -3,9 +3,9 @@ import json
 import os
 from pathlib import Path
 
-def metadata(story,data,out):
+def metadata(story,data,out,narrated=True):
     title=story.title
-    description=f"{title}\n\n{data['definition']}\n\nSource: World Bank — {data['metric']}, reference year {data['year']}.\n{data['source']['metadata_url']}\n\n{data['limitation']}\nNarration is synthesized. Charts preserve published values; figures may be revised.\n#Shorts #DataVisualization"
+    description=f"{title}\n\n{data['definition']}\n\nSource: World Bank — {data['metric']}, reference year {data['year']}.\n{data['source']['metadata_url']}\n\n{data['limitation']}\n{('Narration is synthesized.' if narrated else 'Original procedural background music; no narration.')} Charts preserve published values; figures may be revised.\n#Shorts #DataVisualization"
     meta={'title':title,'description':description,'tags':[data['metric'],'data visualization','World Bank'],'categoryId':'27','language':'en','privacyStatus':'private','containsSyntheticMedia':True,'madeForKids':False,'pinned_comment':f"Source and definitions: {data['source']['metadata_url']}. {data['limitation']}",'alt_text':f"Animated comparison of the five highest available {data['metric']} values in {data['year']}.",'review_flags':['Review synthetic-content disclosure and audience settings before upload.']}
     for name,text in [('youtube_title.txt',title),('youtube_description.txt',description),('keywords.txt',', '.join(meta['tags'])),('pinned_comment.txt',meta['pinned_comment'])]:(out/name).write_text(text)
     (out/'metadata.json').write_text(json.dumps(meta,indent=2))

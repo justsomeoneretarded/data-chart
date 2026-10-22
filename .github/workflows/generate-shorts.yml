@@ -2,6 +2,9 @@ name: Generate Shorts
 on:
   workflow_call:
     inputs:
+      format:
+        default: Auto
+        type: string
       brief:
         required: true
         type: string
@@ -25,16 +28,21 @@ on:
         type: boolean
   workflow_dispatch:
     inputs:
+      format:
+        description: 'Auto: music-first Race, or Versus when the brief says vs. Explainer enables narration.'
+        default: Auto
+        type: choice
+        options: [Auto, Race, Versus, Explainer]
       brief:
         description: 'One supported metric: life expectancy, GDP, fertility, internet, population'
         required: true
         type: string
       duration:
-        description: 'Target seconds, 30–90 (50–70 recommended)'
+        description: 'Target seconds, 30–90'
         default: '50'
         type: string
       voice:
-        description: 'Named voice needs licensed reference; neutral Piper otherwise'
+        description: 'Explainer only: neutral Piper unless configured otherwise'
         default: Warguy
         type: choice
         options: [Warguy, Kit Laser, Female]
@@ -56,13 +64,14 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: shorts-${{ github.run_id }}
+  group: shorts-${{ github.run_id }}-${{ inputs.format }}
   cancel-in-progress: false
 jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
+      INPUT_FORMAT: ${{ inputs.format }}
       INPUT_BRIEF: ${{ inputs.brief }}
       INPUT_DURATION: ${{ inputs.duration }}
       INPUT_VOICE: ${{ inputs.voice }}
@@ -82,7 +91,12 @@ jobs:
       - name: Install media tools
         run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg fonts-dejavu-core
       - name: Install Python package
-        run: pip install .
+        run: |
+          if [ "$INPUT_FORMAT" = 'Explainer' ]; then
+            pip install '.[speech]'
+          else
+            pip install .
+          fi
       - name: Validate input before model downloads
         run: |
           python - <<'PY'
@@ -113,16 +127,22 @@ jobs:
           import json, os
           from pathlib import Path
           from shorts.research import resolve
+          from shorts.history import metric_for
           try:
-              resolve(os.environ['INPUT_BRIEF'])
+              if os.environ['INPUT_FORMAT']=='Explainer':
+                  resolve(os.environ['INPUT_BRIEF'])
+              else:
+                  metric_for(os.environ['INPUT_BRIEF'])
           except Exception as exc:
               Path('output/failure.json').write_text(json.dumps({'stage':'research','error':str(exc)}))
               Path('output/production_report.md').write_text('# Research blocked\n\n'+str(exc))
               raise
           PY
       - name: Install Ollama
+        if: inputs.format == 'Explainer'
         run: curl --fail --show-error --location https://ollama.com/install.sh -o /tmp/install-ollama.sh && sh /tmp/install-ollama.sh
       - name: Load Qwen3 4B
+        if: inputs.format == 'Explainer'
         run: |
           ollama serve > output/ollama.log 2>&1 &
           for attempt in $(seq 1 30); do
@@ -134,6 +154,7 @@ jobs:
         if: inputs.upload_to_youtube
         run: pip install 'google-api-python-client>=2,<3' 'google-auth>=2,<3'
       - name: Restore previous-script history
+        if: inputs.format == 'Explainer'
         uses: actions/cache@v4
         with:
           path: .history
@@ -157,7 +178,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: youtube-short-output-${{ github.run_id }}
+          name: youtube-short-output-${{ inputs.format }}-${{ github.run_id }}
           path: output/
           if-no-files-found: warn
           retention-days: 14

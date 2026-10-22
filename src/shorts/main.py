@@ -21,6 +21,7 @@ def save(path,value):path.write_text(json.dumps(value,indent=2,ensure_ascii=Fals
 def parser():
     p=argparse.ArgumentParser(description='Source-grounded World Bank Shorts generator')
     p.add_argument('--brief',default=os.getenv('INPUT_BRIEF'),required=not bool(os.getenv('INPUT_BRIEF')))
+    p.add_argument('--format',choices=['Auto','Race','Versus','Explainer'],default=os.getenv('INPUT_FORMAT','Auto'))
     p.add_argument('--duration',type=int,default=int(os.getenv('INPUT_DURATION','50')))
     p.add_argument('--voice',choices=['Warguy','Kit Laser','Female'],default=os.getenv('INPUT_VOICE','Warguy'))
     p.add_argument('--style',choices=['Auto','Cinematic','Minimal','Energetic','Documentary'],default=os.getenv('INPUT_STYLE','Auto'))
@@ -34,6 +35,11 @@ def parser():
     p.add_argument('--upload-to-youtube',action='store_true')
     return p
 
+def choose_format(brief, requested='Auto'):
+    if requested!='Auto':return requested
+    import re
+    return 'Versus' if re.search(r'\b(vs\.?|versus)\b',brief.lower()) else 'Race'
+
 def main():
     args=parser().parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s',handlers=[logging.StreamHandler(),logging.FileHandler(out/'pipeline.log')])
@@ -44,6 +50,12 @@ def main():
         if not args.brief or not 5<=len(args.brief.strip())<=1000:raise ValueError('brief must contain 5–1000 characters')
         os.environ['SHORTS_SEED']=str(args.seed)
         save(out/'run.json',{'arguments':{**vars(args),'out':str(out)},'cpu_count':os.cpu_count(),'platform':platform.platform(),'disk_free_bytes':shutil.disk_usage(out).free})
+        if args.format!='Explainer':
+            from .music_film import make
+            stage='dynamic comparison pipeline'
+            make(args,out,choose_format(args.brief,args.format))
+            logging.info('Finished: %s',out/'video.mp4')
+            return 0
         stage='research';logging.info(stage);data=research(args.brief,out)
         save(out/'research.json',data);save(out/'sources.json',[data['source']]);save(out/'analysis.json',{'ranking':data['rows'],'claims':facts(data),'method':'Descending values within one common reference year; excludes regional aggregates and nulls.'})
         stage='story';logging.info(stage);story,planner=plan(data,args.planner)

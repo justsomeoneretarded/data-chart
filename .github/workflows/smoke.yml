@@ -7,9 +7,17 @@ on:
 permissions:
   contents: read
 jobs:
-  smoke:
+  race:
     uses: ./.github/workflows/generate-shorts.yml
     with:
-      brief: 'Which countries have the highest life expectancy?'
-      duration: '50'
+      brief: 'Country wise population from 1960 to 2024'
+      duration: '30'
+      format: Race
+      upload_to_youtube: false
+  versus:
+    uses: ./.github/workflows/generate-shorts.yml
+    with:
+      brief: 'India vs China population from 1960 to 2024'
+      duration: '30'
+      format: Versus
       upload_to_youtube: false
