@@ -32,6 +32,14 @@ Race displays a white canvas, a short title such as **Population race**, 15 plai
 
 For a more provocative supported topic, use `India vs China fertility rates from 1960 to 2024` in Auto mode. This compares births per woman. Sexual-frequency surveys are not implemented and will produce a research error rather than invented rankings.
 
+## Clean sample videos
+
+- [Religion race — download MP4 and source files](https://github.com/justsomeoneretarded/data-chart/actions/runs/39837215411/artifacts/12451043351).
+- [Population race — download MP4 and source files](https://github.com/justsomeoneretarded/data-chart/actions/runs/39837215411/artifacts/12450673919).
+- [Latest sample run and its artifacts](https://github.com/justsomeoneretarded/data-chart/actions/runs/39837215411) also includes the India–China fertility comparison when its job finishes.
+
+The religion and population generation jobs passed their hosted quality gates and artifact upload. All three plain-format samples passed local media checks. [The GitHub test workflow passed all 57 tests](https://github.com/justsomeoneretarded/data-chart/actions/runs/39837215497), including a frozen-video regression test with and without a declared animation window. Download an artifact ZIP and play `video.mp4`. Artifacts expire after 14 days.
+
 ## Supported real data
 
 World Bank annual series for **population, GDP in current US dollars, life expectancy, fertility, and internet use**.
