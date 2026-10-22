@@ -1,15 +1,15 @@
-# Visual direction — dynamic comparisons
+# Visual direction — simple comparisons
 
-The supplied population video demonstrates a continuously evolving bar-chart race: colored entries retain their identities, rank order changes, values advance, and a large year provides context. The supplied football video demonstrates a persistent two-column comparison with accumulating icon reveals. These are the design references for the new formats.
+The user supplied a white-background bar-chart race and a two-column icon comparison as layout references. The video canvas contains only information needed to follow the comparison.
 
-Implemented:
+**Race:** one short title (for example “Population race”), plain solid colored bars, country names, values and the current year. Country labels occupy a fixed left column so they remain readable when a bar is short. The 15-row viewport shows smooth rank transitions. No flags, row cards, gradients, rank-number badges or extra labels.
 
-- **Race**: eight visible entries, country flags, persistent country colors, gradient bars, animated rank transitions, changing values and a large moving year. Source-derived leader changes become on-screen annotations. The ending reveals the latest observed leader.
-- **Versus**: two anchored comparison panels, flags and country names, value counters, a proportional split bar, and person icons that accumulate as the source values change. Each icon's approximate unit is explicitly labeled. This format currently compares country statistics; it does not claim to know athlete trophy totals.
-- **Sound**: original 124 BPM electronic score with synthesized kick, clap, hats, bass, plucks and pads. Ambient omits percussion; Cinematic uses half-time percussion. No audio is sampled from the references. Beat meters and reveal accents follow the score's tempo.
-- **Readability**: fixed information plane, large type and source year, restrained background movement, no narration captions covering the graphics. No ninth row leaking under the race viewport.
-- **Workflow**: Auto selects Race, or Versus when the brief contains “vs”/“versus”. Explainer retains the earlier speech-led format. Music-first formats skip speech models and Ollama entirely.
+**Versus:** one short metric title, two flat color columns, country names/flags, exact displayed values, proportional icons and the current year. No leader announcement, proof captions, panel outlines, icon-unit footer or split-share meter. Icon scaling is recorded in the downloadable storyboard; the main numbers communicate the actual metric values.
 
-Annual data are retrieved from the World Bank. Intermediate numerical labels are explicitly interpolated between adjacent observed annual values. Missing data are never filled with zero or interpolated across a missing year. Visual rank positions transition between annual endpoint ranks; they should not be interpreted as exact intra-year rank observations. Dataset, source response and source metadata are included in every output.
+Both formats retain original background music. There is no Fieldnotes branding, “data in motion”, “World Bank”, “top 8”, “China leads”, date range, unit footer, methodology caption, progress bar or beat meter on the canvas. The short title contains a necessary unit when needed, for example “Births per woman” or “Internet users (%)”.
 
-This is a custom vector-style composition, not a copy of the reference footage, creator branding, athlete photos or soundtrack. Football trophies and other unrelated data domains still require dedicated, verified data adapters and suitably licensed assets.
+Source URLs, definitions, units, annual observations, hashes, interpolation details and asset provenance remain in the downloadable files and YouTube description. Removing explanatory overlays does not change the data-validation requirements.
+
+World Bank values animate only between adjacent observed years; religion animates between the explicitly declared 2010 and 2020 Pew/OWID benchmarks; missing data are never zero-filled. Rank positions are visual transitions between annual endpoints. The opening holds 1.2 seconds and the final year holds 2.5 seconds. These intentional holds are declared to the frozen-frame quality gate, which continues to reject stuck animation during the active interval.
+
+The reference footage and music are not copied. Football-award acquisition and sexual-frequency survey comparisons still require dedicated verified data adapters.

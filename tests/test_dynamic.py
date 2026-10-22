@@ -63,6 +63,8 @@ def test_true_frozen_video_is_rejected(tmp_path):
         check(tmp_path,4.2,preview=True,captions_required=False,allow_silence=True)
     report=json.loads((tmp_path/'quality_report.json').read_text())
     assert report['checks']['decode'] and not report['checks']['no_frozen_sequences']
+    with pytest.raises(ValueError,match='no_frozen_sequences'):
+        check(tmp_path,4.2,preview=True,captions_required=False,allow_silence=True,animation_window=(.1,4.1))
 
 @pytest.mark.parametrize('metric',['Population','GDP','Life expectancy at birth','Fertility rate','Individuals using the Internet'])
 def test_metric_pictograms(history,metric):
@@ -103,3 +105,18 @@ def test_observed_zeros_do_not_crash_race(history):
     history['tables']={y:{c:0.0 for c in table} for y,table in history['tables'].items()}
     film=Film(history,'Race',{});film.duration=30
     assert film.frame(10,30,True).size==(540,960)
+
+@pytest.mark.parametrize('mode',['Race','Versus'])
+def test_clean_on_screen_copy(history,mode,monkeypatch):
+    import shorts.dynamic as module
+    labels=[]
+    original=module.text
+    def record(draw,label,*args,**kwargs):
+        labels.append(str(label));return original(draw,label,*args,**kwargs)
+    monkeypatch.setattr(module,'text',record)
+    film=Film(history,mode,{});film.duration=30
+    image=film.frame(29,30)
+    forbidden=['fieldnotes','world bank','data in motion','top ','leads','leader','observed','source','icon ≈','intermediate','head to head']
+    assert not any(word in label.lower() for word in forbidden for label in labels)
+    assert '2002' in labels
+    assert image.getpixel((0,0))==(255,255,255)

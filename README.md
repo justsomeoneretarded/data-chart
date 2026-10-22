@@ -1,11 +1,12 @@
 # Fieldnotes — dynamic data videos
 
-Create music-first animated comparisons from a brief in GitHub Actions. The default is now a **continuous chart race**, with an alternative **two-column icon comparison** inspired by the supplied examples. The earlier narrated explainer remains selectable.
+Create music-first animated comparisons from a brief in GitHub Actions. The default is now a **plain bar-chart race**, with an alternative **simple two-column icon comparison** inspired by the supplied examples. The earlier narrated explainer remains selectable.
 
 ## Run manually
 
 1. Open **Actions → Generate Shorts → Run workflow**.
 2. Enter a brief, for example:
+   - `Religion race`
    - `Country wise population from 1960 to 2024`
    - `India vs China population from 1960 to 2024`
    - `Show how the largest economies changed over the last 50 years`
@@ -19,26 +20,29 @@ Only the brief is required. Duration defaults to 50 seconds, accepts 30–90. No
 | Format | What moves | Audio |
 |---|---|---|
 | **Auto** | Race by default; Versus when the brief says “vs” or “versus” | Original music |
-| **Race** | Ranked country rows, flags, gradient bars, live counters, year, leader changes and final reveal | Original music |
-| **Versus** | Two persistent panels, counts, accumulating person icons and proportional split | Original music |
+| **Race** | Plain solid bars, country names, values and the year; one short title | Original music |
+| **Versus** | Two flat columns with country names/flags, totals, icons and the year; one short title | Original music |
 | **Explainer** | Earlier four-scene, speech-led infographic | Neutral Piper narration, captions and quiet ambience |
 
-Race and Versus are continuous visual comparisons. They skip Qwen, TTS and transcription, reducing downloads and runner overhead. They intentionally contain no spoken narration or speech-caption files. Music is synthesized from code: 124 BPM kick, clap, hats, bass, arpeggios and pads; it does not reuse the uploaded reference tracks. Music **None** intentionally produces silence. **Ambient** removes percussion; **Cinematic** uses half-time percussion. Styles change the backdrop palette, while country identities retain stable colors. See [visual direction](docs/VISUAL_DIRECTION.md).
+Race and Versus are continuous visual comparisons. They skip Qwen, TTS and transcription, reducing downloads and runner overhead. They intentionally contain no spoken narration or speech-caption files. Music is synthesized from code: 124 BPM kick, clap, hats, bass, arpeggios and pads; it does not reuse the uploaded reference tracks. Music **None** intentionally produces silence. **Ambient** removes percussion; **Cinematic** uses half-time percussion. The canvas is plain: no channel branding, source captions, ranking badges, leader announcements, progress bars or audio meters. Styles change race-bar colors; Versus keeps its two simple column colors. See [visual direction](docs/VISUAL_DIRECTION.md).
 
-## Verified examples
+## Simple visual layout
 
-- [Download the population chart race](https://github.com/justsomeoneretarded/data-chart/actions/runs/39830648317/artifacts/12449420079): 30 seconds, 1960–2024.
-- [Download India vs China](https://github.com/justsomeoneretarded/data-chart/actions/runs/39831453943/artifacts/12449011823): 30 seconds, the two-column population comparison.
+Race displays a white canvas, a short title such as **Population race**, 15 plain bars with country labels and values, and the current year. Versus displays a short metric title, two flat comparison columns, names/flags, totals and proportional icons, and the year. Source and methodology details remain in downloadable files and the YouTube description, not over the video. No source badges, channel branding, leader callouts or footer labels are shown.
 
-Both formats were rendered locally and on GitHub Actions, passed the media quality gates, and uploaded as workflow artifacts. Each ZIP contains `video.mp4`, music, thumbnail, source data and reports. Local testing passes all 43 tests, including an actual MP4 encode/probe and deliberate frozen-video rejection. Sample artifacts expire after 14 days; rerun the manual workflow to generate fresh ones. The reference videos are visual inspiration, and their audio and footage are not copied.
+For a more provocative supported topic, use `India vs China fertility rates from 1960 to 2024` in Auto mode. This compares births per woman. Sexual-frequency surveys are not implemented and will produce a research error rather than invented rankings.
 
 ## Supported real data
 
-World Bank annual series for **population, GDP in current US dollars, life expectancy, fertility, and internet use**. Country/territory aggregates are excluded. The default period begins with available continuous annual coverage from 1960 and ends with the latest sufficiently covered source year. Explicit date ranges must be available; “last 50 years” is anchored to the latest available year, not an invented present-year observation.
+World Bank annual series for **population, GDP in current US dollars, life expectancy, fertility, and internet use**.
+
+**Religion race** uses Pew Research Center global affiliation estimates, processed by Our World in Data. Its observed benchmarks are **2010 and 2020**, with seven categories: Christianity, Islam, Hinduism, Buddhism, Judaism, other religions, and unaffiliated. Unaffiliated is not a religion. The animation interpolates between these two estimates and does not invent annual observations, older history, later years or projections. Raw estimates and source URLs remain in the artifact. This adapter currently supports global Race only.
+
+For World Bank metrics: Country/territory aggregates are excluded. The default period begins with available continuous annual coverage from 1960 and ends with the latest sufficiently covered source year. Explicit date ranges must be available; “last 50 years” is anchored to the latest available year, not an invented present-year observation.
 
 In Versus, two explicitly named countries are used in brief order. Without country names, the two largest latest-year values are selected and identified in the report. Regional subsets, per-capita variants, sports trophies, youngest-population rankings, sexual-frequency surveys and divorce comparisons require other verified adapters and fail with a diagnostic report. The system does not silently replace them with population data.
 
-`dataset.csv` preserves actual annual observations. `source_response.json`, `sources.json`, `research.json`, and `analysis.json` record source URLs, definitions, units, retrieval time, response hash, annual coverage and leader changes. During animation, values are linearly interpolated **only between adjacent observed years**. Missing values are excluded, never zero. Row positions transition between annual endpoint ranks; these positions are animation, not observed intra-year rankings. This distinction is printed on the video and recorded in reports.
+`dataset.csv` preserves actual source observations: annual records for World Bank metrics, or the two benchmark years for religion. `source_response.json`, `sources.json`, `research.json`, and `analysis.json` record source URLs, definitions, units, retrieval time, response hash, annual coverage and leader changes. During animation, values are linearly interpolated **between source anchors**. World Bank series require adjacent observed years; religion explicitly uses the 2010 and 2020 benchmarks. Missing values are excluded, never zero. Row positions transition between annual endpoint ranks; these positions are animation, not observed intra-year rankings. This distinction is printed on the video and recorded in reports.
 
 Flags are optional downloads from Flagcdn/Flagpedia; `asset_sources.json` records their provenance. If unavailable, readable ISO3 badges replace them. National-flag reuse restrictions vary by jurisdiction. The supplied inspiration footage, soundtrack and athlete portraits are not redistributed.
 
@@ -46,7 +50,7 @@ Flags are optional downloads from Flagcdn/Flagpedia; `asset_sources.json` record
 
 Music-first runs include `video.mp4` (1080×1920, 30fps, H.264/AAC), `thumbnail.png`, original `music.wav` when enabled, SEO metadata, title/description/keywords, storyboard, data/source/asset manifests, audio report, quality report, production report and logs. Failed jobs retain diagnostic artifacts and remain failed. Music-only videos do not fabricate speech transcripts or subtitle files.
 
-Technical gates probe codecs, geometry, duration, A/V sync, full decode, black sequences, frozen sections and unexpected silence. The freeze threshold detects genuinely held frames while allowing the small changes in readable data animations. A regression test encodes a deliberately frozen video and confirms rejection. Editorial value, visual taste and monetization eligibility still require human review; there is no guaranteed monetization score.
+Technical gates probe codecs, geometry, duration, A/V sync, full decode, black sequences, frozen sections and unexpected silence. Frozen-frame detection runs over the declared active-animation interval; the 1.2-second opening and 2.5-second final hold are intentional. Full-video decode, black-frame, duration and audio checks still cover the complete file. A regression test encodes a deliberately frozen video and confirms rejection. Editorial value, visual taste and monetization eligibility still require human review; there is no guaranteed monetization score.
 
 ## Local use
 

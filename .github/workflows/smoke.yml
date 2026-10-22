@@ -13,11 +13,21 @@ jobs:
       brief: 'Country wise population from 1960 to 2024'
       duration: '30'
       format: Race
+      artifact_label: population
       upload_to_youtube: false
   versus:
     uses: ./.github/workflows/generate-shorts.yml
     with:
-      brief: 'India vs China population from 1960 to 2024'
+      brief: 'India vs China fertility rates from 1960 to 2024'
       duration: '30'
       format: Versus
+      artifact_label: fertility
+      upload_to_youtube: false
+  religion:
+    uses: ./.github/workflows/generate-shorts.yml
+    with:
+      brief: 'Religion race'
+      duration: '30'
+      format: Race
+      artifact_label: religion
       upload_to_youtube: false

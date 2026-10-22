@@ -2,6 +2,9 @@ name: Generate Shorts
 on:
   workflow_call:
     inputs:
+      artifact_label:
+        default: ''
+        type: string
       format:
         default: Auto
         type: string
@@ -34,7 +37,7 @@ on:
         type: choice
         options: [Auto, Race, Versus, Explainer]
       brief:
-        description: 'One supported metric: life expectancy, GDP, fertility, internet, population'
+        description: 'Population, GDP, fertility, internet, life expectancy, or religion race'
         required: true
         type: string
       duration:
@@ -64,7 +67,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: shorts-${{ github.run_id }}-${{ inputs.format }}
+  group: shorts-${{ github.run_id }}-${{ inputs.artifact_label || inputs.format }}
   cancel-in-progress: false
 jobs:
   generate:
@@ -183,7 +186,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: youtube-short-output-${{ inputs.format }}-${{ github.run_id }}
+          name: youtube-short-output-${{ inputs.artifact_label || inputs.format }}-${{ github.run_id }}
           path: output/
           if-no-files-found: warn
           retention-days: 14

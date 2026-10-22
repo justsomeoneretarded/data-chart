@@ -1,4 +1,4 @@
-"""Real annual observations for races; interpolation is explicitly visual only."""
+"""Source benchmark observations for races; interpolation is explicitly visual only."""
 import csv
 import hashlib
 import json
@@ -9,6 +9,10 @@ from .research import CATALOG, ResearchError, session
 
 
 def metric_for(brief):
+    from .religion import is_topic,validate_brief,METRIC
+    if is_topic(brief):
+        validate_brief(brief)
+        return METRIC
     b=brief.lower()
     if any(s in b for s in ['sex','divorce','youngest','per capita','density','growth rate','women','female','male']):
         raise ResearchError('This metric requires a different verified data adapter; no substitute comparison was generated.')
@@ -20,6 +24,8 @@ def metric_for(brief):
 
 
 def retrieve(brief,out,mode='Race'):
+    from .religion import is_topic,retrieve as religion_data
+    if is_topic(brief):return religion_data(brief,out,mode)
     indicator,title,unit,bounds,definition=metric_for(brief)
     s=session()
     def get(url):
@@ -94,8 +100,11 @@ def retrieve(brief,out,mode='Race'):
 
 
 def snapshot(data,year):
-    lo=max(data['start_year'],min(data['year'],int(math.floor(year))));hi=min(data['year'],lo+1)
-    a=data['tables'][str(lo)];b=data['tables'][str(hi)];fraction=max(0,min(1,year-lo))
-    # Intersection prevents interpolating invented measurements across missing data.
+    anchors=sorted(int(y) for y in data['tables'])
+    year=max(anchors[0],min(anchors[-1],year))
+    lo=max(y for y in anchors if y<=year)
+    hi=min(y for y in anchors if y>=year)
+    a=data['tables'][str(lo)];b=data['tables'][str(hi)]
+    fraction=(year-lo)/(hi-lo) if hi!=lo else 0
     values={c:a[c]+(b[c]-a[c])*fraction for c in a.keys() & b.keys()}
     return values,lo,hi,fraction
