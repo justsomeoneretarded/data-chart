@@ -46,3 +46,21 @@ def test_metadata(data,tmp_path):
     result=metadata(fallback(data),data,tmp_path)
     assert result['privacyStatus']=='private'
     assert 'https://example.invalid/TEST' in result['description']
+
+def test_ffmpeg_integration(data,tmp_path):
+    """Encode and probe an actual tiny TEST DATA film, no network/models needed."""
+    import shutil
+    import subprocess
+    import wave
+    import numpy as np
+    from shorts.visuals import render
+    if not shutil.which('ffmpeg'):pytest.skip('FFmpeg not installed')
+    scenes=[{**s.model_dump(),'start':i*.4,'end':(i+1)*.4} for i,s in enumerate(fallback(data).scenes)]
+    with wave.open(str(tmp_path/'narration.wav'),'wb') as w:
+        w.setnchannels(1);w.setsampwidth(2);w.setframerate(24000)
+        w.writeframes((np.sin(np.arange(38400)*2*np.pi*220/24000)*1000).astype('<i2').tobytes())
+    write([{'text':'TEST DATA','start':.1,'end':1.4}],tmp_path)
+    render(scenes,data,tmp_path,music='None',preview=True)
+    probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(tmp_path/'video.mp4')]))
+    v=next(s for s in probe['streams'] if s['codec_type']=='video')
+    assert v['codec_name']=='h264' and (v['width'],v['height'])==(540,960)

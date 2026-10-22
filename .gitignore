@@ -6,3 +6,5 @@ models/
 *.wav
 *.mp4
 assets/voices/*.wav
+
+*.egg-info/

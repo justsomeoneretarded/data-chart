@@ -50,7 +50,7 @@ def frame(t,scenes,data,style='Auto',size=(1080,1920)):
             d.rounded_rectangle((85,y+56,930,y+88),radius=12,fill='#25374b')
             bar=max(1,int(845*r['value']/rows[0]['value']*p))
             d.rounded_rectangle((85,y+56,85+bar,y+88),radius=12,fill=accent if i==0 else '#5e8f9a')
-            d.text((790,y+4),fmt(r['value']*p),font=font(34,True),fill=secondary)
+            d.text((790,y+4),fmt(r['value']),font=font(34,True),fill=secondary)
     elif kind=='contrast':
         gap=rows[0]['value']-rows[4]['value']
         d.text((85,610),fmt(gap*progress),font=font(170,True),fill=accent)
@@ -75,6 +75,9 @@ def frame(t,scenes,data,style='Auto',size=(1080,1920)):
     # soft per-scene entrance, no full black frames
     if local<.22:
         im=Image.blend(Image.new('RGB',im.size,bg),im,.35+.65*ease(local/.22))
+    # Continuous subpixel camera motion keeps held evidence scenes alive.
+    shift=5*math.sin(local*.35)
+    im=im.transform(im.size,Image.Transform.AFFINE,(1,0,shift,0,1,0),resample=Image.Resampling.BICUBIC,fillcolor=bg)
     return im if size==(1080,1920) else im.resize(size,Image.Resampling.LANCZOS)
 
 def render(scenes,data,out,style='Auto',music='Auto',seed=42,preview=False):

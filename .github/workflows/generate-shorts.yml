@@ -63,11 +63,20 @@ jobs:
       - name: Validate input before model downloads
         run: |
           python - <<'PY'
-          import os
+          import json, os
+          from pathlib import Path
           from shorts.main import parser
-          args = parser().parse_args([])
-          assert 30 <= args.duration <= 90, 'duration must be 30–90'
-          assert args.brief and 5 <= len(args.brief.strip()) <= 1000, 'brief must contain 5–1000 characters'
+          Path('output').mkdir(exist_ok=True)
+          try:
+              args = parser().parse_args([])
+              if not 30 <= args.duration <= 90:
+                  raise ValueError('duration must be 30–90')
+              if not args.brief or not 5 <= len(args.brief.strip()) <= 1000:
+                  raise ValueError('brief must contain 5–1000 characters')
+          except (Exception, SystemExit) as exc:
+              Path('output/failure.json').write_text(json.dumps({'stage':'input validation','error':str(exc)}))
+              Path('output/production_report.md').write_text('# Invalid input\n\nCheck duration (integer 30–90), integer seed, and a brief of 5–1000 characters.')
+              raise
           PY
       - name: Record runner resources
         run: |
