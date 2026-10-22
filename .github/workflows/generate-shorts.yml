@@ -1,5 +1,28 @@
 name: Generate Shorts
 on:
+  workflow_call:
+    inputs:
+      brief:
+        required: true
+        type: string
+      duration:
+        default: '50'
+        type: string
+      voice:
+        default: Warguy
+        type: string
+      style:
+        default: Auto
+        type: string
+      music:
+        default: Auto
+        type: string
+      seed:
+        default: '42'
+        type: string
+      upload_to_youtube:
+        default: false
+        type: boolean
   workflow_dispatch:
     inputs:
       brief:
