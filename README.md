@@ -28,7 +28,12 @@ For truly different scripts and broad research coverage, add reviewed source ada
 
 ## Verification status
 
-21 local tests passed, including MP4 encoding/probing. A 60-second live-data life-expectancy sample with the initially evaluated voice passed all implemented media gates. That voice was replaced with LJ Speech after checking its source license. The cloud runtime went offline during replacement-voice and Qwen checks, so the final voice, local Qwen inference, and a successful full hosted generation run have not yet been verified. The test workflow has a successful run: https://github.com/justsomeoneretarded/data-chart/actions/runs/39798563307 . Do not treat the full original specification as completed.
+- **22 tests passed**, including an actual FFmpeg encoding/FFprobe integration test and numeric speech-equivalence checks. [Successful test run](https://github.com/justsomeoneretarded/data-chart/actions/runs/39801874182).
+- The hosted **Live data smoke test** exercised the same reusable workflow as manual **Generate Shorts**. Its generation job completed successfully with Qwen3 4B, the shipping Piper LJ Speech voice, faster-whisper, rendering, quality gates, and artifact upload. [Generation run](https://github.com/justsomeoneretarded/data-chart/actions/runs/39800724808).
+- The artifact was downloaded and inspected: **50.07 seconds, 1080×1920, H.264 video, AAC audio**. All implemented media gates passed. The pipeline reported **310.1 seconds** elapsed; speech generation reported **6.0 seconds** on that runner. These are one-run measurements, not performance guarantees.
+- [Download the example output artifact](https://github.com/justsomeoneretarded/data-chart/actions/runs/39800724808/artifacts/12434399954). GitHub authentication may be required; retention is 14 days. It contains the MP4, thumbnail, captions, script, data/source manifests and reports.
+- The ambiguous sexual-frequency brief was tested and correctly produced a research failure report without a video.
+- Chatterbox inference, voice cloning, broad research connectors, and optional YouTube uploads remain unverified or incomplete as described above. This is not full completion of the unrestricted original specification.
 
 ## Local run
 
