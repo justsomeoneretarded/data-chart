@@ -148,7 +148,10 @@ class Film:
             winner=max(values,key=values.get)
             accent=rgb(color(winner));shade=tuple(int(v*(.35+.15*pulse)) for v in accent)
             d.rounded_rectangle((48,390,1032,440),radius=12,fill=shade,outline=color(winner),width=3)
-            text(d,f"{data['year']} LEADER  /  {self.name(winner).upper()}",(68,400),26,max_width=930)
+            top_value=values[winner]
+            tied=sum(math.isclose(v,top_value,rel_tol=0,abs_tol=1e-9) for v in values.values())>1
+            label=f"{data['year']} {'JOINT LEADER' if tied else 'LEADER'}  /  {self.name(winner).upper()}"
+            text(d,label,(68,400),26,max_width=930)
         # Large time counter is the visual anchor in both formats.
         text(d,str(int(year+1e-6)),(650,1505),132,color='#E8F0FF',max_width=380)
         text(d,f"{data['start_year']} — {data['year']}",(52,1543),31,color='#9AAEC7')
@@ -166,7 +169,7 @@ class Film:
     def race(self,im,d,t,values,lo,hi,fraction):
         data=self.data;top=sorted(values,key=lambda c:(-values[c],c))[:10]
         if not top:return
-        scale=max(values.values())*1.05
+        scale=max(1e-12,max(values.values())*1.05)
         ranka=self.ranks[lo];rankb=self.ranks[hi]
         text(d,f'TOP {min(8,len(values))}  /  REPORTING COUNTRIES & TERRITORIES',(48,402),22,color='#9AAEC7')
         # Render rows on a separate layer so entering/exiting ranks clip cleanly.
@@ -193,6 +196,7 @@ class Film:
         if changes:
             latest=changes[-1];name=self.name(latest['code'])
             label=f"{name.upper()} LEADS" if latest['year']==data['start_year'] else f"{name.upper()} TOOK THE LEAD · {latest['year']}"
+            if latest.get('tied'):label=f"{name.upper()} / JOINT LEADER"
             text(d,label,(48,1468),24,color=color(latest['code']),max_width=980)
     def versus(self,im,d,t,values):
         data=self.data;pair=data['pair'];colors=['#80B2FF','#FF8B9B']

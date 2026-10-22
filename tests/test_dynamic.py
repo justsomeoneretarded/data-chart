@@ -69,3 +69,37 @@ def test_metric_pictograms(history,metric):
     history['metric']=metric
     film=Film(history,'Versus',{});film.duration=30
     assert film.frame(15,30,True).size==(540,960)
+
+@pytest.fixture
+def fake_bank(monkeypatch):
+    from types import SimpleNamespace
+    import shorts.history as module
+    countries=[{'id':'IND','name':'India','iso2Code':'IN','region':{'id':'SAS'}}, {'id':'CHN','name':'China','iso2Code':'CN','region':{'id':'EAS'}}]
+    records=[{'countryiso3code':c,'date':str(y),'value':v} for y,entries in [(2000,{'IND':100,'CHN':90}),(2001,{'IND':110,'CHN':110})] for c,v in entries.items()]
+    def get(url,**kwargs):
+        body=[{},countries] if '/country?' in url else [{'pages':1},records]
+        return SimpleNamespace(json=lambda:body,raise_for_status=lambda:None)
+    monkeypatch.setattr(module,'session',lambda:SimpleNamespace(get=get))
+
+def test_source_scope_order_and_ties(fake_bank,tmp_path):
+    from shorts.history import retrieve
+    data=retrieve('India vs China population from 2000 to 2001',tmp_path,'Versus')
+    assert data['pair']==['IND','CHN']
+    assert data['leader_changes'][-1]['tied'] is True
+    assert data['tables']['2001']['IND']==110
+    assert data['source']['response_sha256']
+
+def test_single_year_is_not_silently_expanded(fake_bank,tmp_path):
+    from shorts.history import retrieve
+    with pytest.raises(ResearchError,match='year range'):
+        retrieve('India vs China population in 2001',tmp_path,'Versus')
+
+def test_unavailable_range_is_not_silently_replaced(fake_bank,tmp_path):
+    from shorts.history import retrieve
+    with pytest.raises(ResearchError,match='unavailable'):
+        retrieve('India vs China population from 1990 to 2001',tmp_path,'Versus')
+
+def test_observed_zeros_do_not_crash_race(history):
+    history['tables']={y:{c:0.0 for c in table} for y,table in history['tables'].items()}
+    film=Film(history,'Race',{});film.duration=30
+    assert film.frame(10,30,True).size==(540,960)

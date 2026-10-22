@@ -63,6 +63,9 @@ def retrieve(brief,out,mode='Race'):
     if len(years)<2:raise ResearchError('Insufficient comparable annual coverage')
     explicit=[int(y) for y in re.findall(r'\b(?:19|20)\d{2}\b',brief)]
     start,end=(min(explicit),max(explicit)) if len(explicit)>=2 else (years[0],years[-1])
+    if len(explicit)==1:
+        if re.search(r'(?:since|from)\s+'+str(explicit[0]),brief.lower()):start=explicit[0]
+        else:raise ResearchError('A music-first timeline needs a year range. Specify two years, omit the year for full history, or choose Explainer for a snapshot.')
     period=re.search(r'(?:last|past)\s+(\d+)\s+years',brief.lower())
     if period:start=end-int(period.group(1))
     if start<years[0] or end>years[-1] or start>=end:raise ResearchError(f'Requested period unavailable. Source coverage: {years[0]}–{years[-1]}.')
@@ -74,7 +77,7 @@ def retrieve(brief,out,mode='Race'):
         # Both entries must be observed in every displayed year; gaps are never zero.
         selected=[y for y in selected if all(c in tables[y] for c in pair)]
         if len(selected)<2 or selected!=list(range(selected[0],selected[-1]+1)):raise ResearchError('Selected pair lacks continuous comparable observations')
-        if explicit and (selected[0]!=start or selected[-1]!=end):raise ResearchError('Selected countries lack the requested period')
+        if (explicit or period) and (selected[0]!=start or selected[-1]!=end):raise ResearchError('Selected countries lack the requested period')
         start,end=selected[0],selected[-1]
         tables={y:{c:tables[y][c] for c in pair} for y in selected}
     else:tables={y:tables[y] for y in selected}
@@ -84,7 +87,7 @@ def retrieve(brief,out,mode='Race'):
     with (out/'dataset.csv').open('w') as f:
         w=csv.DictWriter(f,fieldnames=['code','name','iso2','year','value']);w.writeheader();w.writerows(rows)
     latest=tables[end];top=sorted(latest,key=lambda c:(-latest[c],c))
-    leaders=[{'year':y,'code':max(tables[y],key=tables[y].get)} for y in tables]
+    leaders=[{'year':y,'code':sorted(tables[y],key=lambda c:(-tables[y][c],c))[0], 'tied':sum(math.isclose(v,max(tables[y].values()),rel_tol=0,abs_tol=1e-9) for v in tables[y].values())>1} for y in tables]
     changes=[r for i,r in enumerate(leaders) if i==0 or r['code']!=leaders[i-1]['code']]
     source={'id':'WB','publisher':'World Bank','dataset':title,'indicator':indicator,'url':url,'metadata_url':f'https://data.worldbank.org/indicator/{indicator}','definition':definition,'unit':unit,'reference_year':end,'start_year':start,'retrieved_at':datetime.now(timezone.utc).isoformat(),'license':'World Bank CC BY 4.0, subject to indicator metadata exceptions','response_sha256':hashlib.sha256(raw.encode()).hexdigest()}
     return {'brief':brief,'metric':title,'unit':unit,'definition':definition,'year':end,'start_year':start,'years':selected,'tables':{str(y):t for y,t in tables.items()},'places':places,'pair':pair,'coverage':len(latest),'rows':[{'code':c,'name':places[c]['name'],'year':end,'value':latest[c]} for c in top[:5]],'leader_changes':changes,'source':source,'limitation':'Annual World Bank observations; intermediate animation values are linearly interpolated between adjacent observed years. Missing observations are excluded, never zero. Coverage follows reporting countries and territories. Estimates can be revised.'}
