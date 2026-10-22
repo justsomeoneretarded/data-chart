@@ -122,6 +122,14 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: python -m shorts.main
+      - name: Preserve diagnostics for setup failures
+        if: failure()
+        run: |
+          mkdir -p output
+          if [ ! -f output/production_report.md ]; then
+            echo '# Workflow setup failed' > output/production_report.md
+            echo 'No completed video is claimed. Inspect the failed step in the Actions log for dependency, network, or runner setup details.' >> output/production_report.md
+          fi
       - name: Upload video and diagnostic artifacts
         if: always()
         uses: actions/upload-artifact@v4
