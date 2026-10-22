@@ -16,7 +16,7 @@ No API keys are required to generate a video. The workflow must be present on th
 - Global highest-value comparisons for **life expectancy, GDP (current US dollars), fertility, internet usage, and population**.
 - Live World Bank API retrieval, response hashing, country/territory filtering, common-year coverage selection, CSV and machine-readable sources.
 - Qwen3 4B via Ollama supplies presentation headings and title, validated with Pydantic and bounded retries. **Narration is currently composed by an audited editorial routine from the evidence.** This intentionally sacrifices unrestricted AI prose for numerical reliability. Arbitrary creative scripting, automated evidence-backed causal explanations, and universal web research are not implemented.
-- Four animated scene families: typography opening, ranking bars, gap comparison, definition/takeaway. This is a reusable visual template; material narrative originality across repeated runs is **not** automatically guaranteed or verified. Maps, race charts, historical comparisons, remain future work. Advisory cross-run script/topic/hook similarity checks use GitHub Actions cache; cache eviction or concurrent runs can limit history coverage.
+- Four animated scene families: typography opening, ranking bars, gap comparison, definition/takeaway. This is a reusable visual template; material narrative originality across repeated runs is **not** automatically guaranteed or verified. Maps, race charts, historical comparisons remain future work. Advisory cross-run script/topic/hook similarity checks use GitHub Actions cache; cache eviction or concurrent runs can limit history coverage.
 - Piper neutral English narration, per-scene generation, measured speech timing, bounded tempo adaptation, normalization, faster-whisper CPU INT8 speech checks, word timestamps, SRT/VTT/ASS karaoke captions.
 - Streaming Pillow/FFmpeg rendering at 1080×1920, 30fps H.264/AAC, original quiet procedural music with speech ducking, thumbnail, SEO/source text.
 - FFprobe and full FFmpeg decode, duration, A/V sync, black/frozen-frame and long-silence gates. Label legibility and editorial quality still need review.
@@ -25,6 +25,10 @@ No API keys are required to generate a video. The workflow must be present on th
 **Chatterbox is optional experimental code, not the default.** A runner benchmark has not established Turbo as reliable on free CPUs; Nano is not implemented. Piper is used to keep the default job small and runnable. Named voice choices are retained as requested labels, but the report explicitly discloses the neutral fallback. Authorized reference handling is documented in [assets/voices/README.md](assets/voices/README.md). Do not assume this reproduces Warguy, Kit Laser, or any other identity.
 
 For truly different scripts and broad research coverage, add reviewed source adapters and an evidence-constrained editorial planner before treating this as a production publishing studio. No monetization guarantee is made.
+
+## Verification status
+
+21 local tests passed, including MP4 encoding/probing. A 60-second live-data life-expectancy sample with the initially evaluated voice passed all implemented media gates. That voice was replaced with LJ Speech after checking its source license. The cloud runtime went offline during replacement-voice and Qwen checks, so the final voice, local Qwen inference, and a successful full hosted generation run have not yet been verified. The test workflow has a successful run: https://github.com/justsomeoneretarded/data-chart/actions/runs/39798563307 . Do not treat the full original specification as completed.
 
 ## Local run
 
@@ -50,7 +54,7 @@ Models are loaded sequentially. Ollama is requested to unload after each respons
 
 `source_response.json` preserves the API payload. `sources.json` records URL, dataset, definition, unit, common year, retrieval timestamp, and SHA-256. `dataset.csv` contains all comparable observations; `analysis.json` contains the top five and named source-backed claims. Storyboard `claim_ids` map to these claims. Ranking includes territories according to World Bank coverage and does not treat missing records as zero. One-decimal narration is an explicit display rounding; raw values remain in the CSV.
 
-Model headings still need editorial review for misleading implications. The script currently explains measurement and limitations rather than inventing why a pattern occurs. Licensing: World Bank data generally use CC BY 4.0 with possible third-party exceptions; inspect each indicator metadata page. Piper's upstream model card is downloaded alongside its model. Procedural music is original synthesis from this code.
+Model headings still need editorial review for misleading implications. The script currently explains measurement and limitations rather than inventing why a pattern occurs. Licensing: World Bank data generally use CC BY 4.0 with possible third-party exceptions; inspect each indicator metadata page. The default voice is Piper en_US-ljspeech-medium; its model card identifies the LJ Speech source dataset as public domain and is included in the output. Procedural music is original synthesis from this code.
 
 ## Optional private YouTube upload
 
