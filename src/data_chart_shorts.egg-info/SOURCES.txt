@@ -1,0 +1,16 @@
+pyproject.toml
+src/data_chart_shorts.egg-info/PKG-INFO
+src/data_chart_shorts.egg-info/SOURCES.txt
+src/data_chart_shorts.egg-info/dependency_links.txt
+src/data_chart_shorts.egg-info/entry_points.txt
+src/data_chart_shorts.egg-info/requires.txt
+src/data_chart_shorts.egg-info/top_level.txt
+src/shorts/__init__.py
+src/shorts/audio.py
+src/shorts/captions.py
+src/shorts/main.py
+src/shorts/publishing.py
+src/shorts/quality.py
+src/shorts/research.py
+src/shorts/story.py
+src/shorts/visuals.py

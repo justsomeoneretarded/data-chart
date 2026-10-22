@@ -1,0 +1,121 @@
+name: Generate Shorts
+on:
+  workflow_dispatch:
+    inputs:
+      brief:
+        description: 'One supported metric: life expectancy, GDP, fertility, internet, population'
+        required: true
+        type: string
+      duration:
+        description: 'Target seconds, 30–90 (50–70 recommended)'
+        default: '50'
+        type: string
+      voice:
+        description: 'Named voice needs licensed reference; neutral Piper otherwise'
+        default: Warguy
+        type: choice
+        options: [Warguy, Kit Laser, Female]
+      style:
+        default: Auto
+        type: choice
+        options: [Auto, Cinematic, Minimal, Energetic, Documentary]
+      music:
+        default: Auto
+        type: choice
+        options: [Auto, Electronic, Ambient, Cinematic, None]
+      seed:
+        description: Optional integer seed
+        type: string
+      upload_to_youtube:
+        description: Upload privately using configured OAuth secrets
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: shorts-${{ github.run_id }}
+  cancel-in-progress: false
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      INPUT_BRIEF: ${{ inputs.brief }}
+      INPUT_DURATION: ${{ inputs.duration }}
+      INPUT_VOICE: ${{ inputs.voice }}
+      INPUT_STYLE: ${{ inputs.style }}
+      INPUT_MUSIC: ${{ inputs.music }}
+      INPUT_SEED: ${{ inputs.seed }}
+      INPUT_UPLOAD: ${{ inputs.upload_to_youtube }}
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '4'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install media tools
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - name: Install Python package
+        run: pip install .
+      - name: Validate input before model downloads
+        run: |
+          python - <<'PY'
+          import os
+          from shorts.main import parser
+          args = parser().parse_args([])
+          assert 30 <= args.duration <= 90, 'duration must be 30–90'
+          assert args.brief and 5 <= len(args.brief.strip()) <= 1000, 'brief must contain 5–1000 characters'
+          PY
+      - name: Record runner resources
+        run: |
+          mkdir -p output
+          lscpu > output/runner-resources.txt
+          free -h >> output/runner-resources.txt
+          df -h >> output/runner-resources.txt
+      - name: Resolve supported topic before downloading models
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from shorts.research import resolve
+          try:
+              resolve(os.environ['INPUT_BRIEF'])
+          except Exception as exc:
+              Path('output/failure.json').write_text(json.dumps({'stage':'research','error':str(exc)}))
+              Path('output/production_report.md').write_text('# Research blocked\n\n'+str(exc))
+              raise
+          PY
+      - name: Install Ollama
+        run: curl --fail --show-error --location https://ollama.com/install.sh -o /tmp/install-ollama.sh && sh /tmp/install-ollama.sh
+      - name: Load Qwen3 4B
+        run: |
+          ollama serve > output/ollama.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:11434/api/tags > /dev/null; then break; fi
+            sleep 2
+          done
+          ollama pull qwen3:4b
+      - name: Install optional publishing dependencies
+        if: inputs.upload_to_youtube
+        run: pip install 'google-api-python-client>=2,<3' 'google-auth>=2,<3'
+      - name: Generate and validate video
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: python -m shorts.main
+      - name: Upload video and diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-short-output-${{ github.run_id }}
+          path: output/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Production summary
+        if: always()
+        run: |
+          if [ -f output/production_report.md ]; then cat output/production_report.md >> "$GITHUB_STEP_SUMMARY"; fi
