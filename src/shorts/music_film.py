@@ -19,7 +19,7 @@ def make(args,out,mode):
     events=[{'year':r['year'],'code':r['code'],'time':1.2+(r['year']-data['start_year'])/(data['year']-data['start_year'])*(args.duration-3.7)} for r in data['leader_changes']]
     save('storyboard.json',{'format':mode,'start':0,'end':args.duration,'source_years':data['years'],'intro_seconds':1.2,'final_hold_seconds':2.5,'data':'dataset.csv','start_year':data['start_year'],'end_year':data['year'],'source_leader_events':events,'icon_unit':data['unit'],'value_per_icon':max(v for table in data['tables'].values() for v in table.values())/40 if any(v for table in data['tables'].values() for v in table.values()) else 1,'narration':False,'camera':'Fixed plain comparison canvas','motion':'Continuous annual interpolation, plain moving bars or icon columns, value counters and year only','safe_area':[24,65,1056,1830]})
     names=[data['places'][c]['name'] for c in data['pair']]
-    title=(f"{data['metric']}: {data['start_year']}–{data['year']} | The changing leaders" if mode=='Race' else f"{names[0]} vs {names[1]}: {data['metric']}")[:95]
+    title=(f"{data['metric']} race: {data['start_year']}–{data['year']}" if mode=='Race' else f"{names[0]} vs {names[1]}: {data['metric']}")[:95]
     meta=metadata(SimpleNamespace(title=title),data,out,narrated=False)
     meta['alt_text']=f"{mode} animation of {data['source']['publisher']} {data['metric']} estimates, {data['start_year']} to {data['year']}. Source benchmark observations are interpolated during motion."
     save('metadata.json',meta)
