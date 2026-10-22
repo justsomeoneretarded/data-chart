@@ -25,6 +25,13 @@ Only the brief is required. Duration defaults to 50 seconds, accepts 30–90. No
 
 Race and Versus are continuous visual comparisons. They skip Qwen, TTS and transcription, reducing downloads and runner overhead. They intentionally contain no spoken narration or speech-caption files. Music is synthesized from code: 124 BPM kick, clap, hats, bass, arpeggios and pads; it does not reuse the uploaded reference tracks. Music **None** intentionally produces silence. **Ambient** removes percussion; **Cinematic** uses half-time percussion. Styles change the backdrop palette, while country identities retain stable colors. See [visual direction](docs/VISUAL_DIRECTION.md).
 
+## Verified examples
+
+- [Download the population chart race](https://github.com/justsomeoneretarded/data-chart/actions/runs/39830648317/artifacts/12449420079): 30 seconds, 1960–2024.
+- [Download India vs China](https://github.com/justsomeoneretarded/data-chart/actions/runs/39831453943/artifacts/12449011823): 30 seconds, the two-column population comparison.
+
+Both formats were rendered locally and on GitHub Actions, passed the media quality gates, and uploaded as workflow artifacts. Each ZIP contains `video.mp4`, music, thumbnail, source data and reports. Local testing passes all 43 tests, including an actual MP4 encode/probe and deliberate frozen-video rejection. Sample artifacts expire after 14 days; rerun the manual workflow to generate fresh ones. The reference videos are visual inspiration, and their audio and footage are not copied.
+
 ## Supported real data
 
 World Bank annual series for **population, GDP in current US dollars, life expectancy, fertility, and internet use**. Country/territory aggregates are excluded. The default period begins with available continuous annual coverage from 1960 and ends with the latest sufficiently covered source year. Explicit date ranges must be available; “last 50 years” is anchored to the latest available year, not an invented present-year observation.
