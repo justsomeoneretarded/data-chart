@@ -9,7 +9,7 @@ import wave
 from pathlib import Path
 import requests
 
-PIPER_ROOT='https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/'
+PIPER_ROOT='https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ljspeech/medium/'
 def run(args):
     subprocess.run([str(a) for a in args],check=True,timeout=600,stdout=subprocess.DEVNULL)
 def seconds(path):
@@ -36,14 +36,16 @@ def synthesize(story,out,voice='Warguy',engine='piper',duration=50):
     elif engine=='piper':
         from piper import PiperVoice
         root=Path('models');root.mkdir(exist_ok=True)
-        modelpath=root/'en_US-lessac-medium.onnx'
+        modelpath=root/'en_US-ljspeech-medium.onnx'
         for suffix in ['', '.json']:
             download(PIPER_ROOT+modelpath.name+suffix,Path(str(modelpath)+suffix))
-        download(PIPER_ROOT+'MODEL_CARD',root/'PIPER_MODEL_CARD.txt')
+        card=root/'LJSPEECH_MODEL_CARD.txt'
+        download(PIPER_ROOT+'MODEL_CARD',card)
+        (out/'voice_model_card.txt').write_text(card.read_text())
         model=PiperVoice.load(str(modelpath))
         def speak(text,path):
             with wave.open(str(path),'wb') as f: model.synthesize_wav(text,f)
-        actual='Piper en_US-lessac-medium; generic model preset, no user voice cloning'
+        actual='Piper en_US-ljspeech-medium; generic model preset, no user voice cloning'
     else:
         def speak(text,path): run(['espeak-ng','-s','165','-w',path,text])
         actual='eSpeak NG synthetic demonstration voice (lower naturalness)'
