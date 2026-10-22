@@ -1,0 +1,15 @@
+name: Live data smoke test
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/smoke.yml'
+permissions:
+  contents: read
+jobs:
+  smoke:
+    uses: ./.github/workflows/generate-shorts.yml
+    with:
+      brief: 'Which countries have the highest life expectancy?'
+      duration: '50'
+      upload_to_youtube: false
