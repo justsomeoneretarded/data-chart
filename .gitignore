@@ -8,3 +8,5 @@ models/
 assets/voices/*.wav
 
 *.egg-info/
+
+.history/

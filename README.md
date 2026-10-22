@@ -16,7 +16,7 @@ No API keys are required to generate a video. The workflow must be present on th
 - Global highest-value comparisons for **life expectancy, GDP (current US dollars), fertility, internet usage, and population**.
 - Live World Bank API retrieval, response hashing, country/territory filtering, common-year coverage selection, CSV and machine-readable sources.
 - Qwen3 4B via Ollama supplies presentation headings and title, validated with Pydantic and bounded retries. **Narration is currently composed by an audited editorial routine from the evidence.** This intentionally sacrifices unrestricted AI prose for numerical reliability. Arbitrary creative scripting, automated evidence-backed causal explanations, and universal web research are not implemented.
-- Four animated scene families: typography opening, ranking bars, gap comparison, definition/takeaway. This is a reusable visual template; material narrative originality across repeated runs is **not** automatically guaranteed or verified. Maps, race charts, historical comparisons, and cross-run duplicate checking remain future work.
+- Four animated scene families: typography opening, ranking bars, gap comparison, definition/takeaway. This is a reusable visual template; material narrative originality across repeated runs is **not** automatically guaranteed or verified. Maps, race charts, historical comparisons, remain future work. Advisory cross-run script/topic/hook similarity checks use GitHub Actions cache; cache eviction or concurrent runs can limit history coverage.
 - Piper neutral English narration, per-scene generation, measured speech timing, bounded tempo adaptation, normalization, faster-whisper CPU INT8 speech checks, word timestamps, SRT/VTT/ASS karaoke captions.
 - Streaming Pillow/FFmpeg rendering at 1080×1920, 30fps H.264/AAC, original quiet procedural music with speech ducking, thumbnail, SEO/source text.
 - FFprobe and full FFmpeg decode, duration, A/V sync, black/frozen-frame and long-silence gates. Label legibility and editorial quality still need review.
@@ -44,7 +44,7 @@ To exercise the full media pipeline without downloading Qwen, explicitly select 
 
 `--style` changes the palette (Auto, Cinematic, Minimal, Energetic, Documentary). Music supports Auto, Electronic, Ambient, Cinematic, None. The first four use a quiet procedural tonal score; they are not a professional music-generation model. Seed controls the planner and score; external dataset revisions, model versions, and encoder details prevent byte-for-byte reproducibility. Customize typography and geometry in `src/shorts/visuals.py`; subtitle styles are in `captions.py`.
 
-Models are loaded sequentially. Ollama is requested to unload after each response; speech and ASR models exist only in their stage. Video frames are streamed rather than retained in memory. No large model cache is uploaded to GitHub. The workflow records CPU/RAM/disk in its artifact. Dependency major versions are bounded; full transitive dependency locking remains a maintenance improvement.
+Models are loaded sequentially. Ollama is requested to unload after each response; speech and ASR models exist only in their stage. Video frames are streamed rather than retained in memory. No large model cache is uploaded to GitHub. A small script-history cache supports advisory duplicate checks. The workflow records CPU/RAM/disk in its artifact. Dependency major versions are bounded; full transitive dependency locking remains a maintenance improvement.
 
 ## Source and claim audit
 

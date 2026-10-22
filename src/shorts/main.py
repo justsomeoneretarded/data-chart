@@ -15,6 +15,7 @@ from .captions import write
 from .visuals import render
 from .quality import check
 from .publishing import metadata,upload
+from .originality import audit,remember
 
 def save(path,value):path.write_text(json.dumps(value,indent=2,ensure_ascii=False))
 def parser():
@@ -46,6 +47,7 @@ def main():
         stage='research';logging.info(stage);data=research(args.brief,out)
         save(out/'research.json',data);save(out/'sources.json',[data['source']]);save(out/'analysis.json',{'ranking':data['rows'],'claims':facts(data),'method':'Descending values within one common reference year; excludes regional aggregates and nulls.'})
         stage='story';logging.info(stage);story,planner=plan(data,args.planner)
+        originality,history_record=audit(story,args.brief);save(out/'originality_report.json',originality)
         (out/'script.txt').write_text('\n\n'.join(s.narration for s in story.scenes))
         stage='voice';logging.info(stage);scenes,voice=synthesize(story,out,args.voice,args.engine,args.duration)
         save(out/'voice_report.json',voice);save(out/'storyboard.json',scenes)
@@ -57,6 +59,7 @@ def main():
         if args.upload_to_youtube or os.getenv('INPUT_UPLOAD')=='true':
             if args.preview or args.engine=='espeak':raise ValueError('Diagnostic preview may not be uploaded')
             stage='youtube upload';upload(out,meta)
+        remember(history_record)
         logging.info('Finished: %s',out/'video.mp4')
     except Exception as exc:
         save(out/'failure.json',{'status':'failed','stage':stage,'error':str(exc)})

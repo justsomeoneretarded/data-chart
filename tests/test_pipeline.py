@@ -64,3 +64,12 @@ def test_ffmpeg_integration(data,tmp_path):
     probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(tmp_path/'video.mp4')]))
     v=next(s for s in probe['streams'] if s['codec_type']=='video')
     assert v['codec_name']=='h264' and (v['width'],v['height'])==(540,960)
+
+def test_originality(data,tmp_path):
+    from shorts.originality import audit,remember
+    story=fallback(data)
+    report,record=audit(story,'TEST DATA',tmp_path)
+    assert not report['matches']
+    remember(record,tmp_path)
+    report,_=audit(story,'TEST DATA',tmp_path)
+    assert report['matches'][0]['similarity']==1

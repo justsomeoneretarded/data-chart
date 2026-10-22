@@ -1,5 +1,6 @@
 """Chunked permitted speech, measured timing, and independent ASR alignment."""
 import difflib
+from collections import Counter
 import json
 import re
 import subprocess
@@ -73,8 +74,10 @@ def align(scenes,out,model_name='base'):
         chunkwords=[w for s in segments for w in (s.words or [])]
         actual=' '.join(w.word for w in chunkwords)
         similarity=difflib.SequenceMatcher(None,normalize(scene['narration']),normalize(actual),autojunk=False).ratio()
-        reports.append({'scene':i,'expected':scene['narration'],'recognized':actual,'similarity':similarity})
-        if similarity<0.80 or not chunkwords:
+        numeric=lambda text: Counter(re.sub(r'\s+', '', m) for m in re.findall(r'\d+(?:\s*\.\s*\d+)?',text))
+        numeric_match=numeric(scene['narration'])==numeric(actual)
+        reports.append({'numeric_match':numeric_match,'scene':i,'expected':scene['narration'],'recognized':actual,'similarity':similarity})
+        if similarity<0.80 or not chunkwords or not numeric_match:
             (out/'speech_check.json').write_text(json.dumps(reports,indent=2))
             raise ValueError(f'Speech mismatch in scene {i}: {similarity:.0%}. Original chunks retained for diagnosis.')
         words += [{'text':w.word.strip(),'start':scene['start']+w.start,'end':min(scene['end'],scene['start']+w.end)} for w in chunkwords]

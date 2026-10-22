@@ -110,6 +110,12 @@ jobs:
       - name: Install optional publishing dependencies
         if: inputs.upload_to_youtube
         run: pip install 'google-api-python-client>=2,<3' 'google-auth>=2,<3'
+      - name: Restore previous-script history
+        uses: actions/cache@v4
+        with:
+          path: .history
+          key: shorts-history-${{ github.run_id }}
+          restore-keys: shorts-history-
       - name: Generate and validate video
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
