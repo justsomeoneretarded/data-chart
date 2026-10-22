@@ -73,3 +73,9 @@ def test_originality(data,tmp_path):
     remember(record,tmp_path)
     report,_=audit(story,'TEST DATA',tmp_path)
     assert report['matches'][0]['similarity']==1
+
+def test_spoken_numeric_equivalence():
+    from shorts.audio import numeric_tokens
+    assert numeric_tokens('1,000,000.0 and 86.50 in 2024') == numeric_tokens('1 million and 86 .5 in 2024')
+    assert numeric_tokens('86.5') != numeric_tokens('85.6')
+    assert numeric_tokens('86.5 twice: 86.5') != numeric_tokens('86.5')

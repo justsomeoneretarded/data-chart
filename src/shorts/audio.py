@@ -1,6 +1,7 @@
 """Chunked permitted speech, measured timing, and independent ASR alignment."""
 import difflib
 from collections import Counter
+from decimal import Decimal
 import json
 import re
 import subprocess
@@ -66,6 +67,15 @@ def synthesize(story,out,voice='Warguy',engine='piper',duration=50):
     run(['ffmpeg','-v','error','-y','-f','concat','-safe','0','-i',out/'concat.txt','-c:a','pcm_s16le',out/'narration.wav'])
     return scenes,{'engine':actual,'warnings':warnings,'raw_seconds':raw_total,'tempo':tempo,'generation_seconds':time.monotonic()-started}
 
+def numeric_tokens(text):
+    """Compare equivalent English numeric spellings without weakening value checks."""
+    tokens = re.findall(r'(?<![\w.])(\d[\d,]*(?:\s*\.\s*\d+)?)(?:\s*(trillion|billion|million|thousand)\b)?', text.lower())
+    scales = {'': Decimal(1), 'thousand': Decimal(1000), 'million': Decimal(10)**6,
+              'billion': Decimal(10)**9, 'trillion': Decimal(10)**12}
+    return Counter(Decimal(re.sub(r'[\s,]', '', number)) * scales[suffix]
+                   for number, suffix in tokens)
+
+
 def normalize(text): return re.findall(r"[a-z0-9]+",text.lower())
 def align(scenes,out,model_name='base'):
     from faster_whisper import WhisperModel
@@ -76,12 +86,11 @@ def align(scenes,out,model_name='base'):
         chunkwords=[w for s in segments for w in (s.words or [])]
         actual=' '.join(w.word for w in chunkwords)
         similarity=difflib.SequenceMatcher(None,normalize(scene['narration']),normalize(actual),autojunk=False).ratio()
-        numeric=lambda text: Counter(re.sub(r'\s+', '', m) for m in re.findall(r'\d+(?:\s*\.\s*\d+)?',text))
-        numeric_match=numeric(scene['narration'])==numeric(actual)
+        numeric_match=numeric_tokens(scene['narration'])==numeric_tokens(actual)
         reports.append({'numeric_match':numeric_match,'scene':i,'expected':scene['narration'],'recognized':actual,'similarity':similarity})
         if similarity<0.80 or not chunkwords or not numeric_match:
             (out/'speech_check.json').write_text(json.dumps(reports,indent=2))
-            raise ValueError(f'Speech mismatch in scene {i}: {similarity:.0%}. Original chunks retained for diagnosis.')
+            raise ValueError(f'Speech mismatch in scene {i}: {similarity:.0%}, numerical match={numeric_match}. Original chunks retained for diagnosis.')
         words += [{'text':w.word.strip(),'start':scene['start']+w.start,'end':min(scene['end'],scene['start']+w.end)} for w in chunkwords]
     (out/'speech_check.json').write_text(json.dumps(reports,indent=2))
     return words
