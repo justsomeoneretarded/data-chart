@@ -27,7 +27,7 @@ def test_real_demographic_series_preserve_values_and_scope(tmp_path):
     assert d['data_kind']=='source observations'
     assert d['tables']['2000']=={'S1':10,'S2':12}
     assert d['year']==2002
-    assert d['places']['S1']['name']=='Population, male'
+    assert d['places']['S1']['name']=='Male'
     assert len(d['source']['series'])==2
     assert (tmp_path/'dataset.csv').exists()
     assert facts(d)['G']
