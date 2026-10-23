@@ -7,27 +7,21 @@ on:
 permissions:
   contents: read
 jobs:
-  race:
+  demographic_discovery:
     uses: ./.github/workflows/generate-shorts.yml
     with:
-      brief: 'Country wise population from 1960 to 2024'
+      brief: 'Male vs female population in the USA, 1960–2025'
       duration: '30'
       format: Race
-      artifact_label: population
+      artifact_label: demographics
+      require_real_data: true
       upload_to_youtube: false
-  versus:
+  metric_discovery:
     uses: ./.github/workflows/generate-shorts.yml
     with:
-      brief: 'India vs China fertility rates from 1960 to 2024'
+      brief: 'India vs China unemployment total percent of total labor force national estimate, 2000–2020'
       duration: '30'
       format: Versus
-      artifact_label: fertility
-      upload_to_youtube: false
-  religion:
-    uses: ./.github/workflows/generate-shorts.yml
-    with:
-      brief: 'Religion race'
-      duration: '30'
-      format: Race
-      artifact_label: religion
+      artifact_label: unemployment
+      require_real_data: true
       upload_to_youtube: false
