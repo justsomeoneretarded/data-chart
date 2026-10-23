@@ -17,7 +17,6 @@ W,H=1080,1920
 FONT='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 BOLD='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 COLORS=['#178CFA','#2838A8','#F1772D','#177C8A','#81118B','#00AFCB','#C4A600','#486DC3','#D7596B','#16A085','#8E5EA2','#D45E00']
-SHORT={'United States':'USA','Russian Federation':'Russia','Korea, Rep.':'South Korea','Iran, Islamic Rep.':'Iran','Egypt, Arab Rep.':'Egypt','Hong Kong SAR, China':'Hong Kong','Venezuela, RB':'Venezuela','Congo, Dem. Rep.':'DR Congo'}
 
 @lru_cache(maxsize=100)
 def font(size,bold=True):return ImageFont.truetype(BOLD if bold else FONT,size)
@@ -33,8 +32,8 @@ def live_fmt(value):
     return fmt(value)
 
 def color(code):
-    primary={'CHR':'#2185D0','MUS':'#1A936F','UNA':'#777777','HIN':'#ED8A24','BUD':'#BE9D18','JEW':'#7958B3','OTH':'#C95479','CHN':'#178CFA','IND':'#1A259E','USA':'#F1772D','RUS':'#177C8A','IDN':'#81118B','JPN':'#00AFDA','BRA':'#C4A600','DEU':'#486DC3'}
-    return primary.get(code,COLORS[int(hashlib.sha256(code.encode()).hexdigest()[:6],16)%len(COLORS)])
+    return COLORS[int(hashlib.sha256(code.encode()).hexdigest()[:6],16)%len(COLORS)]
+
 def rgb(hex):return tuple(int(hex[i:i+2],16) for i in [1,3,5])
 
 
@@ -70,23 +69,26 @@ def flag(im,d,code,flags,xy,size=(72,48)):
 
 
 def glyph(d,x,y,fill,scale,metric):
-    if metric in ['Population','Fertility rate']:
+    if metric=='people':
         people(d,x,y,fill,scale)
-    elif any(word in metric.lower() for word in ['troph','award','cup']):
+    elif metric=='trophy':
         d.polygon([(x-16,y+8),(x+16,y+8),(x+10,y+32),(x,y+38),(x-10,y+32)],fill=fill)
         d.line((x,y+34,x,y+49),fill=fill,width=5)
         d.rectangle((x-13,y+48,x+13,y+53),fill=fill)
         d.arc((x-25,y+9,x+25,y+36),0,180,fill=fill,width=3)
-    elif metric=='GDP':
+    elif metric=='coins':
         r=18*scale
         d.ellipse((x-r,y+12*scale,x+r,y+48*scale),outline=fill,width=max(1,int(3*scale)))
         d.line((x,y+18*scale,x,y+42*scale),fill=fill,width=max(1,int(3*scale)))
         d.arc((x-8*scale,y+18*scale,x+8*scale,y+33*scale),80,280,fill=fill,width=2)
         d.arc((x-8*scale,y+28*scale,x+8*scale,y+43*scale),260,460,fill=fill,width=2)
-    elif metric=='Life expectancy at birth':
+    elif metric=='heart':
         d.ellipse((x-19*scale,y+8*scale,x+2*scale,y+30*scale),fill=fill)
         d.ellipse((x-2*scale,y+8*scale,x+19*scale,y+30*scale),fill=fill)
         d.polygon([(x-18*scale,y+23*scale),(x+18*scale,y+23*scale),(x,y+47*scale)],fill=fill)
+    elif metric=='bar':
+        for k,h in enumerate([18,30,42]):
+            d.rectangle((x-20+k*15,y+50-h,x-11+k*15,y+50),fill=fill)
     else:
         d.rounded_rectangle((x-19*scale,y+8*scale,x+19*scale,y+38*scale),radius=3,outline=fill,width=2)
         d.line((x,y+39*scale,x,y+48*scale),fill=fill,width=2)
@@ -113,7 +115,7 @@ class Film:
         self.data=data;self.mode=mode;self.flags=flags;self.style=style
         self.ranks={int(y):{c:i for i,c in enumerate(sorted(table,key=lambda c:(-table[c],c)))} for y,table in data['tables'].items()}
         self.total_max=max(v for table in data['tables'].values() for v in table.values())
-        self.name=lambda c:SHORT.get(data['places'][c]['name'],data['places'][c]['name'])
+        self.name=lambda c:data['places'][c]['name']
         self.unit=self.total_max/40 if self.total_max else 1
     def fill(self,code):
         base=np.array(rgb(color(code)),dtype=float)
@@ -171,7 +173,7 @@ class Film:
             for n in range(48):
                 cx=x+85+(n%6)*74;cy=650+(n//6)*105
                 fill=accent if n<count else backgrounds[i]
-                glyph(d,cx,cy,fill,1.0,data['metric'])
+                glyph(d,cx,cy,fill,1.0,data.get('icon','bar'))
 
 
 def render(data,out,duration=50,mode='Race',music='Auto',style='Auto',seed=42,preview=False):
