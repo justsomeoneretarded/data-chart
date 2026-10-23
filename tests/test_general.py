@@ -24,6 +24,6 @@ def test_general_plan_to_clean_render(tmp_path,monkeypatch):
 
 def test_source_failure_routes_to_general(tmp_path,monkeypatch):
     def unavailable(*a,**k):raise ValueError('Unsupported metric')
-    monkeypatch.setattr('shorts.history.retrieve',unavailable)
+    monkeypatch.setattr('shorts.discovery.retrieve',unavailable)
     monkeypatch.setattr('shorts.general.retrieve',lambda *a,**kw:kw)
     assert resolve('ants vs mosquitoes',tmp_path,'Versus')['reason']=='Unsupported metric'
