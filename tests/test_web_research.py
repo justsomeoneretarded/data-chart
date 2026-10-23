@@ -48,6 +48,7 @@ def test_private_urls_are_rejected():
 def test_web_is_tried_before_simulation(tmp_path,monkeypatch):
     from shorts.general import resolve
     def missing(*a,**k):raise ValueError('not in catalog')
+    monkeypatch.setattr('shorts.general.choose_source',lambda *a:'country_statistics')
     monkeypatch.setattr('shorts.discovery.retrieve',missing)
     monkeypatch.setattr('shorts.web_research.retrieve',lambda *a,**k:{'data_kind':'source observations'})
     def no_simulation(*a,**k):pytest.fail('simulation must not run')
@@ -81,3 +82,12 @@ def test_conflicting_source_numbers_are_not_silently_chosen(evidence,findings):
     findings.facts.append(findings.facts[0].model_copy(update={'value_text':'30','source_id':'W2','quote':'League - 30'}))
     with pytest.raises(ValueError,match='Conflicting'):
         validate_facts(findings,evidence,['A','B'])
+
+
+def test_organizations_cannot_be_replaced_with_country_data(tmp_path,monkeypatch):
+    from shorts.general import resolve
+    monkeypatch.setattr('shorts.general.choose_source',lambda *a:'other_entities')
+    def no_country_substitution(*a,**k):pytest.fail('Non-country entities must not query the country catalog')
+    monkeypatch.setattr('shorts.discovery.retrieve',no_country_substitution)
+    monkeypatch.setattr('shorts.web_research.retrieve',lambda *a,**k:{'source':{'id':'WEB'}})
+    assert resolve('Team A vs Team B trophies',tmp_path,'Versus')['source']['id']=='WEB'

@@ -9,6 +9,17 @@ import requests
 from pydantic import BaseModel, Field, model_validator
 from .research import session
 
+class ResearchIntent(BaseModel):
+    subject_kind: Literal['country_statistics','other_entities']
+    subjects: list[str] = Field(min_length=1,max_length=15)
+    measure: str
+
+def choose_source(brief,out):
+    from .discovery import model
+    intent=model(ResearchIntent,'Identify the actual subjects and measure in this brief, correcting spelling: '+json.dumps(brief)+'. Classify the subjects BEFORE selecting data. country_statistics means national/territorial statistics, global country rankings, or demographic groups within a named country. Named companies, clubs, teams, people, species, products, cities and other non-country entities MUST be other_entities. Do not replace entities with their countries or replace the requested measure with a loosely related metric. Return the actual requested names and measure. No values or indicator codes.')
+    (out/'research_intent.json').write_text(intent.model_dump_json(indent=2))
+    return intent.subject_kind
+
 class Entry(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     values: list[float] = Field(min_length=2, max_length=12)
@@ -83,12 +94,14 @@ Return only the requested JSON schema.'''
 
 def resolve(brief,out,mode='Race'):
     from .discovery import retrieve as discover
+    from .web_research import retrieve as web_retrieve
+    route=choose_source(brief,out)
     try:
+        if route=='other_entities':raise ValueError('Requested entities are outside a country-statistics catalog')
         return discover(brief,out,mode)
     except (ValueError,requests.RequestException,KeyError,TypeError) as exc:
         reason=str(exc)
         (out/'discovery_report.json').write_text(json.dumps({'status':'no usable real comparison','reason':reason},indent=2))
-        from .web_research import retrieve as web_retrieve
         try:
             return web_retrieve(brief,out,mode)
         except (ValueError,requests.RequestException,KeyError,TypeError) as web_exc:

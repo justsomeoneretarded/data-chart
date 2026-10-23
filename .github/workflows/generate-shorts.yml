@@ -2,6 +2,9 @@ name: Generate Shorts
 on:
   workflow_call:
     inputs:
+      require_source_id:
+        default: ''
+        type: string
       require_real_data:
         default: false
         type: boolean
@@ -160,12 +163,16 @@ jobs:
         run: python -m shorts.main
       - name: Assert real observations in source smoke tests
         if: inputs.require_real_data
+        env:
+          REQUIRE_SOURCE_ID: ${{ inputs.require_source_id }}
         run: |
           python - <<'PY'
-          import json
+          import json, os
           from pathlib import Path
           data=json.loads(Path('output/research.json').read_text())
           assert data.get('data_kind') == 'source observations', data.get('limitation')
+          if os.environ.get('REQUIRE_SOURCE_ID'):
+              assert data['source']['id'] == os.environ['REQUIRE_SOURCE_ID'], data['source']
           print('Verified source observations:', data['source']['publisher'], data['start_year'], data['year'])
           PY
       - name: Preserve diagnostics for setup failures

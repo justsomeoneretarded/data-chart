@@ -33,5 +33,6 @@ jobs:
       duration: '30'
       format: Versus
       artifact_label: web-trophies
+      require_source_id: WEB
       require_real_data: true
       upload_to_youtube: false
