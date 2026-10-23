@@ -37,7 +37,7 @@ on:
         type: choice
         options: [Auto, Race, Versus, Explainer]
       brief:
-        description: 'Population, GDP, fertility, internet, life expectancy, or religion race'
+        description: 'Any comparison; real-source fast paths, otherwise a private illustrative simulation'
         required: true
         type: string
       duration:
@@ -129,28 +129,9 @@ jobs:
           lscpu > output/runner-resources.txt
           free -h >> output/runner-resources.txt
           df -h >> output/runner-resources.txt
-      - name: Resolve supported topic before downloading models
-        run: |
-          python - <<'PY'
-          import json, os
-          from pathlib import Path
-          from shorts.research import resolve
-          from shorts.history import metric_for
-          try:
-              if os.environ['INPUT_FORMAT']=='Explainer':
-                  resolve(os.environ['INPUT_BRIEF'])
-              else:
-                  metric_for(os.environ['INPUT_BRIEF'])
-          except Exception as exc:
-              Path('output/failure.json').write_text(json.dumps({'stage':'research','error':str(exc)}))
-              Path('output/production_report.md').write_text('# Research blocked\n\n'+str(exc))
-              raise
-          PY
       - name: Install Ollama
-        if: inputs.format == 'Explainer'
         run: curl --fail --show-error --location https://ollama.com/install.sh -o /tmp/install-ollama.sh && sh /tmp/install-ollama.sh
       - name: Load Qwen3 4B
-        if: inputs.format == 'Explainer'
         run: |
           ollama serve > output/ollama.log 2>&1 &
           for attempt in $(seq 1 30); do

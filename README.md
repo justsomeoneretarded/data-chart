@@ -105,3 +105,9 @@ Generation and artifact delivery are the default. To enable `upload_to_youtube`,
 | YouTube failure | Check OAuth scopes, consent, refresh token and quota; generated artifact remains available |
 
 This remains a curated data-video engine. Broad web research, reliable football-award acquisition, portrait licensing, and unrestricted original AI scripts are additional work, not implied by the visual presets.
+
+### General private comparisons
+
+Race and Versus now accept arbitrary subjects, including `Barcelona vs Real Madrid in trophies across all competitions` and `Ants vs mosquitoes population, 1980–2025`. Existing World Bank and religion connectors remain the first choice. If source retrieval is unsupported or unavailable, Qwen3 plans a topic-specific **illustrative simulation**, using a bounded Wikipedia background lookup when available. This background lookup does not verify generated numbers; this is not yet a universal verified-data extractor.
+
+The video contains only the comparison visuals and music. `research.json`, `comparison_plan.json`, the CSV and description retain provenance; simulated numbers are never recorded as verified observations. Cumulative totals use step changes rather than fractional trophy counts. The workflow installs Ollama for all formats so the fallback is ready without topic-specific setup. Model/runtime/media failures can still fail a run; no system can guarantee an error-free execution. Review artifacts before sharing.

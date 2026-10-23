@@ -72,6 +72,11 @@ def flag(im,d,code,flags,xy,size=(72,48)):
 def glyph(d,x,y,fill,scale,metric):
     if metric in ['Population','Fertility rate']:
         people(d,x,y,fill,scale)
+    elif any(word in metric.lower() for word in ['troph','award','cup']):
+        d.polygon([(x-16,y+8),(x+16,y+8),(x+10,y+32),(x,y+38),(x-10,y+32)],fill=fill)
+        d.line((x,y+34,x,y+49),fill=fill,width=5)
+        d.rectangle((x-13,y+48,x+13,y+53),fill=fill)
+        d.arc((x-25,y+9,x+25,y+36),0,180,fill=fill,width=3)
     elif metric=='GDP':
         r=18*scale
         d.ellipse((x-r,y+12*scale,x+r,y+48*scale),outline=fill,width=max(1,int(3*scale)))
@@ -122,7 +127,7 @@ class Film:
         data=self.data
         im=Image.new('RGB',(W,H),'white');d=ImageDraw.Draw(im)
         titles={'Population':'Population race','GDP':'GDP race (US$)','Life expectancy at birth':'Life expectancy','Fertility rate':'Births per woman','Individuals using the Internet':'Internet users (%)','Religion':'Religion race'}
-        title=titles[data['metric']]
+        title=titles.get(data['metric'],data['metric'])
         if self.mode=='Versus':title=title.replace(' race','')
         text(d,title,(30,65),64,color='#151515',max_width=1020)
         year=timeline(t,duration,data);values,lo,hi,fraction=snapshot(data,year)
@@ -156,7 +161,7 @@ class Film:
         for i,c in enumerate(pair):
             x=i*540;v=values[c];accent=colors[i]
             d.rectangle((x,190,x+539,1550),fill=backgrounds[i])
-            flag(im,d,c,self.flags,(x+206,230),(128,86))
+            if data['places'][c].get('iso2'):flag(im,d,c,self.flags,(x+206,230),(128,86))
             name=self.name(c)
             size=48
             while d.textlength(name,font=font(size))>480 and size>20:size-=1
