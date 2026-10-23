@@ -8,7 +8,7 @@ import shutil
 import sys
 import time
 import traceback
-from .research import research
+from .general import resolve as research
 from .story import plan, facts
 from .audio import synthesize,align
 from .captions import write
@@ -19,7 +19,7 @@ from .originality import audit,remember
 
 def save(path,value):path.write_text(json.dumps(value,indent=2,ensure_ascii=False))
 def parser():
-    p=argparse.ArgumentParser(description='Source-grounded World Bank Shorts generator')
+    p=argparse.ArgumentParser(description='Research-driven comparison video generator')
     p.add_argument('--brief',default=os.getenv('INPUT_BRIEF'),required=not bool(os.getenv('INPUT_BRIEF')))
     p.add_argument('--format',choices=['Auto','Race','Versus','Explainer'],default=os.getenv('INPUT_FORMAT','Auto'))
     p.add_argument('--duration',type=int,default=int(os.getenv('INPUT_DURATION','50')))
@@ -56,7 +56,7 @@ def main():
             make(args,out,choose_format(args.brief,args.format))
             logging.info('Finished: %s',out/'video.mp4')
             return 0
-        stage='research';logging.info(stage);data=research(args.brief,out)
+        stage='research';logging.info(stage);data=research(args.brief,out,'Race');data['rows']=data['rows'][:5]
         save(out/'research.json',data);save(out/'sources.json',[data['source']]);save(out/'analysis.json',{'ranking':data['rows'],'claims':facts(data),'method':'Descending values within one common reference year; excludes regional aggregates and nulls.'})
         stage='story';logging.info(stage);story,planner=plan(data,args.planner)
         originality,history_record=audit(story,args.brief);save(out/'originality_report.json',originality)
@@ -67,7 +67,7 @@ def main():
         stage='render';logging.info(stage);render(scenes,data,out,args.style,args.music,args.seed,args.preview)
         meta=metadata(story,data,out)
         stage='quality';logging.info(stage);check(out,scenes[-1]['end'],args.preview)
-        (out/'production_report.md').write_text(f"# Production report\n\nStatus: generated and technically validated.\n\nPlanner: {planner}\n\nVoice: {voice['engine']}\n\n"+'\n'.join(voice['warnings'])+f"\n\nElapsed: {time.monotonic()-started:.1f}s\n\nSource: {data['source']['metadata_url']}\n\nLimitations: curated World Bank metrics only; no universal research or causal inference. Subjective originality and visual legibility require review. Chatterbox CPU feasibility has not been established on GitHub hosted runners. No monetization guarantee.\n")
+        (out/'production_report.md').write_text(f"# Production report\n\nStatus: generated and technically validated.\n\nPlanner: {planner}\n\nVoice: {voice['engine']}\n\n"+'\n'.join(voice['warnings'])+f"\n\nElapsed: {time.monotonic()-started:.1f}s\n\nSource: {data['source']['metadata_url']}\n\nLimitations: model-assisted source discovery; inspect selected definitions and provenance. No causal inference. Subjective originality and visual legibility require review. Chatterbox CPU feasibility has not been established on GitHub hosted runners. No monetization guarantee.\n")
         if args.upload_to_youtube or os.getenv('INPUT_UPLOAD')=='true':
             if args.preview or args.engine=='espeak':raise ValueError('Diagnostic preview may not be uploaded')
             stage='youtube upload';upload(out,meta)
