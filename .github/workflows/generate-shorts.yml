@@ -2,6 +2,9 @@ name: Generate Shorts
 on:
   workflow_call:
     inputs:
+      require_real_data:
+        default: false
+        type: boolean
       artifact_label:
         default: ''
         type: string
@@ -155,6 +158,16 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: python -m shorts.main
+      - name: Assert real observations in source smoke tests
+        if: inputs.require_real_data
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('output/research.json').read_text())
+          assert data.get('data_kind') == 'source observations', data.get('limitation')
+          print('Verified source observations:', data['source']['publisher'], data['start_year'], data['year'])
+          PY
       - name: Preserve diagnostics for setup failures
         if: failure()
         run: |
