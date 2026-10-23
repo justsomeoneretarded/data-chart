@@ -67,3 +67,18 @@ def test_complete_discovery_uses_metadata_not_model_values(tmp_path,monkeypatch)
     d=discovery.retrieve('Male vs female population USA',tmp_path,'Race')
     assert d['tables']['2002']=={'S1':12,'S2':14}
     assert (tmp_path/'discovery_selection.json').exists()
+
+def test_semantic_selection_is_corrected_before_fallback(tmp_path,monkeypatch):
+    from shorts import discovery
+    invalid=Selection(**{**PLAN,'indicator_ids':['MALE','FEMALE'],'country_ids':['USA','CHN']})
+    countries={**COUNTRIES,'CHN':{'name':'China','iso2Code':'CN'}}
+    valid=Selection(**{**PLAN,'indicator_ids':['MALE'],'country_ids':['USA','CHN']})
+    answers=iter([invalid,valid]);prompts=[]
+    def model(schema,prompt):
+        prompts.append(prompt);return next(answers)
+    monkeypatch.setattr(discovery,'model',model)
+    assert discovery.select_validated('brief',CATALOG,countries,'Versus',tmp_path)==valid
+    assert 'Validation error' in prompts[1]
+    import json
+    attempts=json.loads((tmp_path/'discovery_attempts.json').read_text())
+    assert len(attempts)==2 and 'error' in attempts[0] and 'error' not in attempts[1]
