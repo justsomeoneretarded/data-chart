@@ -48,18 +48,18 @@ def frame(t,scenes,data,style='Auto',size=(1080,1920)):
             while d.textlength(name,font=font(fsize,True))>650:fsize-=1
             d.text((85,y),name,font=font(fsize,True),fill='white')
             d.rounded_rectangle((85,y+56,930,y+88),radius=12,fill='#25374b')
-            bar=max(1,int(845*r['value']/rows[0]['value']*p))
+            bar=max(1,int(845*r['value']/max(1e-12,rows[0]['value'])*p))
             d.rounded_rectangle((85,y+56,85+bar,y+88),radius=12,fill=accent if i==0 else '#5e8f9a')
             d.text((790,y+4),fmt(r['value']),font=font(34,True),fill=secondary)
     elif kind=='contrast':
-        gap=rows[0]['value']-rows[4]['value']
+        gap=rows[0]['value']-rows[-1]['value']
         d.text((85,610),fmt(gap*progress),font=font(170,True),fill=accent)
         wrapped(d,data['unit'],(95,810),size=38,fill=secondary)
-        wrapped(d,'BETWEEN THE FIRST AND FIFTH SHOWN',(95,935),size=33,width=760)
-        for i,r in enumerate([rows[0],rows[4]]):
+        wrapped(d,'BETWEEN THE FIRST AND LAST SHOWN',(95,935),size=33,width=760)
+        for i,r in enumerate([rows[0],rows[-1]]):
             y=1060+i*145
             wrapped(d,r['name'],(95,y),size=32,width=730)
-            d.rounded_rectangle((95,y+57,95+max(1,int(740*r['value']/rows[0]['value']*progress)),y+86),radius=10,fill=accent if i==0 else secondary)
+            d.rounded_rectangle((95,y+57,95+max(1,int(740*r['value']/max(1e-12,rows[0]['value'])*progress)),y+86),radius=10,fill=accent if i==0 else secondary)
     elif kind=='hook':
         for i in range(3):
             y=640+i*180;w=int((740-i*130)*ease((local-i*.18)/1.8))
@@ -68,8 +68,8 @@ def frame(t,scenes,data,style='Auto',size=(1080,1920)):
         wrapped(d,'What does the ranking actually tell us?',(85,1230),size=43,width=820,fill=secondary)
     else:
         wrapped(d,data['definition'],(85,620),size=43,width=800,fill=accent)
-        wrapped(d,'ONE MEASURE\nONE COMMON YEAR\nREPORTED DATA ONLY',(85,1040),size=38,width=800,fill=secondary)
-    d.text((85,1700),f"WORLD BANK  /  {data['year']}  /  {data['coverage']} REPORTING PLACES",font=font(24,True),fill='#b3c5d5')
+        wrapped(d,'ONE MEASURE\nONE COMMON YEAR',(85,1040),size=38,width=800,fill=secondary)
+    d.text((85,1700),f"COMPARISON  /  {data['year']}  /  {data['coverage']} ENTRIES",font=font(24,True),fill='#b3c5d5')
     wrapped(d,data['unit'].upper(),(85,1750),size=24,width=850,fill='#b3c5d5')
     total=scenes[-1]['end'];d.rectangle((85,1815,85+int(845*min(1,t/total)),1821),fill=accent)
     # soft per-scene entrance, no full black frames
