@@ -19,16 +19,16 @@ def facts(data):
     rows=data['rows']; unit=data['unit']
     claims={f'R{i}':f"{r['name']}: {r['value']:,.1f} {unit} ({data['year']})" for i,r in enumerate(rows)}
     claims['D']=data['definition']; claims['L']=data['limitation']
-    claims['G']=f"Gap between the first and fifth displayed entries: {rows[0]['value']-rows[4]['value']:,.1f} {unit}."
+    claims['G']=f"Gap between the first and last displayed entries: {rows[0]['value']-rows[-1]['value']:,.1f} {unit}."
     return claims
 
 def fallback(data):
     c=facts(data)
     return Story(title=f"What {data['metric'].lower()} rankings really show", scenes=[
-        Scene(kind='hook',text='THE RANKING IS ONLY HALF THE STORY',narration=f"Which places lead this measure? Before comparing {data['metric'].lower()}, we need to know what the number actually measures.",claim_ids=['D']),
-        Scene(kind='bars',text=f"{data['metric'].upper()}",narration=f"Among reporting countries and territories, {c['R0']}. Next is {c['R1']}. These are the highest five available values in the same year.",claim_ids=['R0','R1','R2','R3','R4']),
+        Scene(kind='hook',text='THE RANKING IS ONLY HALF THE STORY',narration=f"Which subjects lead this measure? Before comparing {data['metric'].lower()}, we need to know what the number actually measures.",claim_ids=['D']),
+        Scene(kind='bars',text=f"{data['metric'].upper()}",narration=f"In this comparison, {c['R0']}. Next is {c['R1']}. These entries use the same reference year.",claim_ids=['R0','R1']),
         Scene(kind='contrast',text='LOOK AT THE DISTANCE',narration=f"{c['G']} {c['D']} A ranking alone hides both the size of the difference and the meaning of the measure.",claim_ids=['G','D']),
-        Scene(kind='takeaway',text='COMPARE THE MEASURE. CHECK THE YEAR.',narration=f"{c['L']} Read these figures as a snapshot of this measure, not a complete verdict on a country. The source and full comparison are included with this video.",claim_ids=['L'])])
+        Scene(kind='takeaway',text='COMPARE THE MEASURE. CHECK THE YEAR.',narration=f"{c['L']} Read these figures as a snapshot of this measure, not a complete verdict on a subject. The source and full comparison are included with this video.",claim_ids=['L'])])
 
 def validate_story(story, data):
     c=facts(data)
