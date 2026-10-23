@@ -24,7 +24,7 @@ def facts(data):
 
 def fallback(data):
     c=facts(data)
-    return Story(title=f"What {data['metric'].lower()} rankings really show", scenes=[
+    return Story(title=f"What {data['metric'].lower()} rankings really show"[:95], scenes=[
         Scene(kind='hook',text='THE RANKING IS ONLY HALF THE STORY',narration=f"Which subjects lead this measure? Before comparing {data['metric'].lower()}, we need to know what the number actually measures.",claim_ids=['D']),
         Scene(kind='bars',text=f"{data['metric'].upper()}",narration=f"In this comparison, {c['R0']}. Next is {c['R1']}. These entries use the same reference year.",claim_ids=['R0','R1']),
         Scene(kind='contrast',text='LOOK AT THE DISTANCE',narration=f"{c['G']} {c['D']} A ranking alone hides both the size of the difference and the meaning of the measure.",claim_ids=['G','D']),
