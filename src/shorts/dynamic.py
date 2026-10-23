@@ -27,6 +27,7 @@ def text(d,label,xy,size=40,color='white',max_width=None,bold=True):
     d.text(xy,label,font=font(size,bold),fill=color)
 
 def live_fmt(value):
+    if 0 < abs(value) < 100:return f'{value:.2f}'
     if abs(value)>=1e12:return f'{value/1e12:.2f}T'
     if abs(value)>=1e9:return f'{value/1e9:.3f}B'
     return fmt(value)
@@ -172,7 +173,8 @@ class Film:
             count=v/self.unit
             for n in range(48):
                 cx=x+85+(n%6)*74;cy=650+(n//6)*105
-                fill=accent if n<count else backgrounds[i]
+                fraction=max(0,min(1,count-n))
+                fill=tuple(round(a*fraction+b*(1-fraction)) for a,b in zip(rgb(accent),rgb(backgrounds[i])))
                 glyph(d,cx,cy,fill,1.0,data.get('icon','bar'))
 
 

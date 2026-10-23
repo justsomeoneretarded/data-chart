@@ -84,3 +84,19 @@ def test_clean_on_screen_copy(history,mode,monkeypatch):
     assert not any(word in label.lower() for word in forbidden for label in labels)
     assert '2002' in labels
     assert image.getpixel((0,0))==(255,255,255)
+
+def test_small_changes_in_versus_do_not_freeze(history,tmp_path,monkeypatch):
+    """A slow percentage comparison must move between rounded counter updates."""
+    from shorts.dynamic import render
+    from shorts.quality import check
+    if not shutil.which('ffmpeg'):pytest.skip('FFmpeg required')
+    history['tables']={
+        '2000':{'AAA':7.652,'BBB':4.93},
+        '2001':{'AAA':6.51,'BBB':5.15},
+        '2002':{'AAA':7.859,'BBB':5.61},
+    }
+    history['metric']='TEST percentage comparison'
+    monkeypatch.setattr('shorts.dynamic.load_flags',lambda *a:{})
+    render(history,tmp_path,30,'Versus',music='None',preview=True)
+    report=check(tmp_path,30,True,captions_required=False,allow_silence=True,animation_window=(1.2,27.5))
+    assert report['passed']
