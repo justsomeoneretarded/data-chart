@@ -126,9 +126,7 @@ class Film:
     def frame(self,t,duration,preview=False):
         data=self.data
         im=Image.new('RGB',(W,H),'white');d=ImageDraw.Draw(im)
-        titles={'Population':'Population race','GDP':'GDP race (US$)','Life expectancy at birth':'Life expectancy','Fertility rate':'Births per woman','Individuals using the Internet':'Internet users (%)','Religion':'Religion race'}
-        title=titles.get(data['metric'],data['metric'])
-        if self.mode=='Versus':title=title.replace(' race','')
+        title=data['metric']
         text(d,title,(30,65),64,color='#151515',max_width=1020)
         year=timeline(t,duration,data);values,lo,hi,fraction=snapshot(data,year)
         if self.mode=='Race':self.race(im,d,t,values,lo,hi,fraction)
