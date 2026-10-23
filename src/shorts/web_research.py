@@ -114,7 +114,7 @@ def number(text):
 
 
 def validate_facts(findings,pages,subjects):
-    sources={p['id']:p for p in pages};seen=set();rows=[]
+    sources={p['id']:p for p in pages};seen={};rows=[]
     for fact in findings.facts:
         if fact.subject not in subjects or fact.source_id not in sources:raise ResearchError('Unknown subject or source in extraction')
         quote=normalize(fact.quote);value_text=normalize(fact.value_text)
@@ -123,8 +123,10 @@ def validate_facts(findings,pages,subjects):
         value=number(value_text)
         if fact.year is not None and str(fact.year) not in quote:raise ResearchError('Historical year is absent from evidence quote')
         key=(fact.subject,fact.category,fact.year)
-        if key in seen:raise ResearchError('Conflicting or duplicate numerical claim')
-        seen.add(key);rows.append({**fact.model_dump(),'value':value,'url':sources[fact.source_id]['url']})
+        if key in seen:
+            if seen[key]!=value:raise ResearchError('Conflicting numerical claims across sources')
+            continue
+        seen[key]=value;rows.append({**fact.model_dump(),'value':value,'url':sources[fact.source_id]['url']})
     return rows
 
 
@@ -165,7 +167,7 @@ def assemble(brief,out,mode,plan,findings,pages):
         w=csv.DictWriter(f,fieldnames=['subject','category','year','value','value_text','source_id','url','quote']);w.writeheader();w.writerows(selected)
     (out/'web_evidence.json').write_text(json.dumps(selected,indent=2))
     last=tables[str(end)];source={'id':'WEB','publisher':'Web source records','metadata_url':selected[0]['url'],'url':selected[0]['url'],'pages':[{k:p[k] for k in ['id','url','title','sha256','retrieved_at']} for p in pages]}
-    limitation=findings.limitations+' Every value has a literal quote in web_evidence.json; extraction and category equivalence are model-assisted and need review. Omitted categories are not zero. No total is inferred from an incomplete category list.'
+    limitation=findings.limitations+' Category counters reveal published counts; they are not a historical sequence. Every source value has a literal quote in web_evidence.json; extraction and category equivalence are model-assisted and need review. Omitted categories are not zero. No total is inferred from an incomplete category list.'
     return {'brief':brief,'metric':findings.title,'unit':findings.unit,'definition':findings.scope,'year':now if category_frames else end,'start_year':now if category_frames else start,'years':[now] if category_frames else axis,'tables':tables,'places':places,'pair':list(places)[:2],'coverage':len(places),'rows':[{'code':c,'name':places[c]['name'],'year':end,'value':last[c]} for c in sorted(last,key=last.get,reverse=True)],'leader_changes':[],'data_kind':'source observations','icon':findings.icon,'source':source,'limitation':limitation,'category_frames':category_frames,'reference_year':now if category_frames else end,'integer_values':all(r['value'].is_integer() for r in selected)}
 
 

@@ -1,5 +1,6 @@
 """Orchestrate the visual comparison format independently of speech models."""
 import json
+import math
 import logging
 import time
 from types import SimpleNamespace
@@ -17,7 +18,7 @@ def make(args,out,mode):
     save('research.json',data);save('sources.json',[data['source']])
     save('analysis.json',{'leader_changes':data['leader_changes'],'final_ranking':data['rows'],'pair':data['pair'],'method':'Benchmark animation; see research.json data_kind and limitation for provenance. Display ranks transition between source endpoints.','source_years':data['years'],'coverage_by_year':{y:len(v) for y,v in data['tables'].items()}})
     events=[{'year':r['year'],'code':r['code'],'time':1.2+(r['year']-data['start_year'])/(data['year']-data['start_year'])*(args.duration-3.7)} for r in data['leader_changes']]
-    save('storyboard.json',{'format':mode,'start':0,'end':args.duration,'source_years':([] if data.get('category_frames') else data['years']),'categories':data.get('category_frames',[]),'intro_seconds':1.2,'final_hold_seconds':2.5,'data':'dataset.csv','start_year':data['start_year'],'end_year':data['year'],'source_leader_events':events,'icon_unit':data['unit'],'value_per_icon':max(v for table in data['tables'].values() for v in table.values())/40 if any(v for table in data['tables'].values() for v in table.values()) else 1,'narration':False,'camera':'Fixed plain comparison canvas','motion':'Continuous annual interpolation, plain moving bars or icon columns, value counters and year only','safe_area':[24,65,1056,1830]})
+    save('storyboard.json',{'format':mode,'start':0,'end':args.duration,'source_years':([] if data.get('category_frames') else data['years']),'categories':data.get('category_frames',[]),'intro_seconds':1.2,'final_hold_seconds':2.5,'data':'dataset.csv','start_year':data['start_year'],'end_year':data['year'],'source_leader_events':events,'icon_unit':data['unit'],'value_per_icon':(max(1,math.ceil(max(v for table in data['tables'].values() for v in table.values())/40)) if data.get('integer_values') else max(v for table in data['tables'].values() for v in table.values())/40 if any(v for table in data['tables'].values() for v in table.values()) else 1),'narration':False,'camera':'Fixed plain comparison canvas','motion':'Continuous annual interpolation, plain moving bars or icon columns, value counters and year only','safe_area':[24,65,1056,1830]})
     names=[data['places'][c]['name'] for c in data['pair']]
     title=(f"{names[0]} vs {names[1]}: {data['metric']}" if data.get('category_frames') else f"{data['metric']} race: {data['start_year']}–{data['year']}" if mode=='Race' else f"{names[0]} vs {names[1]}: {data['metric']}")[:95]
     meta=metadata(SimpleNamespace(title=title),data,out,narrated=False)

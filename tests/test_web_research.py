@@ -71,3 +71,13 @@ def test_complete_web_reader_searches_fetches_and_extracts(tmp_path,evidence,fin
     assert queries==p.queries
     assert data['source']['id']=='WEB'
     assert len(json.loads((tmp_path/'web_evidence.json').read_text()))==4
+
+def test_matching_duplicates_are_corroboration_not_extra_categories(evidence,findings):
+    findings.facts.append(findings.facts[0])
+    assert len(validate_facts(findings,evidence,['A','B']))==4
+
+def test_conflicting_source_numbers_are_not_silently_chosen(evidence,findings):
+    evidence[1]['text']+=' League - 30'
+    findings.facts.append(findings.facts[0].model_copy(update={'value_text':'30','source_id':'W2','quote':'League - 30'}))
+    with pytest.raises(ValueError,match='Conflicting'):
+        validate_facts(findings,evidence,['A','B'])
