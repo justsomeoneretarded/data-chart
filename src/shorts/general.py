@@ -80,7 +80,10 @@ Return only the requested JSON schema.'''
     return {'brief':brief,'metric':plan.title,'unit':plan.unit,'definition':f'{plan.title} ({plan.unit})','year':plan.years[-1],'start_year':plan.years[0],'years':plan.years,'tables':tables,'places':places,'pair':pair,'coverage':len(places),'rows':[{'code':c,'name':places[c]['name'],'year':plan.years[-1],'value':latest[c]} for c in sorted(latest,key=latest.get,reverse=True)],'leader_changes':leaders,'data_kind':'simulation','interpolation':'integer' if plan.cumulative else 'linear','source':{'id':'SIMULATION','publisher':'Private illustrative simulation','metadata_url':'comparison_plan.json','url':'comparison_plan.json','definition':limitation,'fallback_reason':reason,'background_references':[r['url'] for r in refs]},'limitation':limitation}
 
 def resolve(brief,out,mode='Race'):
-    from .history import retrieve as structured
-    try:return structured(brief,out,mode)
+    from .discovery import retrieve as discover
+    try:
+        return discover(brief,out,mode)
     except (ValueError,requests.RequestException,KeyError,TypeError) as exc:
-        return retrieve(brief,out,mode,reason=str(exc))
+        reason=str(exc)
+        (out/'discovery_report.json').write_text(json.dumps({'status':'no usable real comparison','reason':reason},indent=2))
+        return retrieve(brief,out,mode,reason=reason)
