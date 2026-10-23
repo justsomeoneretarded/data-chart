@@ -106,8 +106,12 @@ Generation and artifact delivery are the default. To enable `upload_to_youtube`,
 
 This remains a curated data-video engine. Broad web research, reliable football-award acquisition, portrait licensing, and unrestricted original AI scripts are additional work, not implied by the visual presets.
 
-### General private comparisons
+### General comparison discovery
 
-Race and Versus now accept arbitrary subjects, including `Barcelona vs Real Madrid in trophies across all competitions` and `Ants vs mosquitoes population, 1980–2025`. Existing World Bank and religion connectors remain the first choice. If source retrieval is unsupported or unavailable, Qwen3 plans a topic-specific **illustrative simulation**, using a bounded Wikipedia background lookup when available. This background lookup does not verify generated numbers; this is not yet a universal verified-data extractor.
+All three formats use the same research resolver. There is no active topic allowlist, country-alias map, or topic-to-indicator mapping. The resolver downloads the live World Bank indicator catalog, searches metadata using terms inferred from the brief, chooses matching source IDs and countries, and downloads actual observations. It supports comparisons between countries on one indicator and comparisons between demographic or other indicator variants within one country.
 
-The video contains only the comparison visuals and music. `research.json`, `comparison_plan.json`, the CSV and description retain provenance; simulated numbers are never recorded as verified observations. Cumulative totals use step changes rather than fractional trophy counts. The workflow installs Ollama for all formats so the fallback is ready without topic-specific setup. Model/runtime/media failures can still fail a run; no system can guarantee an error-free execution. Review artifacts before sharing.
+Models select metadata; they never supply values for a real-data run. Unknown IDs, duplicate observations, incompatible declared units and missing common annual coverage are rejected. The longest available common continuous interval is used, and unavailable requested years are omitted rather than invented. Raw responses, selected definitions, IDs and provenance are included in artifacts.
+
+If discovery cannot produce a usable comparison, the existing private simulation fallback runs and records that distinction in accompanying files. The video stays clean. Current automatic verified discovery searches the World Bank catalog; this is not yet an unrestricted web-table extractor. Topics absent from that catalog may still use simulations. Legacy connector modules are retained for compatibility tests, but are not called by the active pipeline.
+
+Try `Male vs female population in the USA, 1960–2025` with Race or Versus. A source smoke test also exercises unemployment, which was absent from the old metric list.
