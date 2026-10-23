@@ -72,13 +72,14 @@ def test_semantic_selection_is_corrected_before_fallback(tmp_path,monkeypatch):
     from shorts import discovery
     invalid=Selection(**{**PLAN,'indicator_ids':['MALE','FEMALE'],'country_ids':['USA','CHN']})
     countries={**COUNTRIES,'CHN':{'name':'China','iso2Code':'CN'}}
-    valid=Selection(**{**PLAN,'indicator_ids':['MALE'],'country_ids':['USA','CHN']})
-    answers=iter([invalid,valid]);prompts=[]
+    answers=iter([invalid,discovery.SingleIndicator(indicator_id='MALE',explanation='One shared definition')]);schemas=[]
     def model(schema,prompt):
-        prompts.append(prompt);return next(answers)
+        schemas.append(schema);return next(answers)
     monkeypatch.setattr(discovery,'model',model)
-    assert discovery.select_validated('brief',CATALOG,countries,'Versus',tmp_path)==valid
-    assert 'Validation error' in prompts[1]
+    result=discovery.select_validated('brief',CATALOG,countries,'Versus',tmp_path)
+    assert result.indicator_ids==['MALE']
+    assert result.country_ids==['USA','CHN']
+    assert schemas==[Selection,discovery.SingleIndicator]
     import json
     attempts=json.loads((tmp_path/'discovery_attempts.json').read_text())
-    assert len(attempts)==2 and 'error' in attempts[0] and 'error' not in attempts[1]
+    assert len(attempts)==1 and 'error' not in attempts[0]

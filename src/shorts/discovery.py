@@ -26,6 +26,10 @@ class Selection(BaseModel):
     explanation: str
     icon: Literal['people','coins','heart','screen','trophy','bar'] = 'bar'
 
+class SingleIndicator(BaseModel):
+    indicator_id: str
+    explanation: str
+
 def model(schema,prompt):
     errors=[]
     for _ in range(3):
@@ -81,6 +85,12 @@ def select_validated(prompt,catalog,countries,mode,out):
     attempts=[]
     for attempt in range(3):
         plan=model(Selection,prompt)
+        # A scalar selection prevents the model from repeatedly combining
+        # alternative methods when comparing countries on the same measure.
+        if len(plan.country_ids)>1 and len(plan.indicator_ids)>1:
+            choices=[{'id':i,'name':catalog[i]['name'],'definition':catalog[i].get('sourceNote','')} for i in plan.indicator_ids if i in catalog]
+            repair=model(SingleIndicator,prompt+'\nResolve the alternative indicator methods below. Return ONE indicator_id string matching the exact requested definition and method, shared by every requested country. Do not combine alternatives. Options: '+json.dumps(choices))
+            plan=plan.model_copy(update={'indicator_ids':[repair.indicator_id],'explanation':repair.explanation})
         record={'attempt':attempt+1,'plan':plan.model_dump()}
         try:
             validate_selection(plan,catalog,countries,mode)
