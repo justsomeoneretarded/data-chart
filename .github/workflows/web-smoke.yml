@@ -1,0 +1,19 @@
+name: Web research smoke test
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/web-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  web_comparison:
+    uses: ./.github/workflows/generate-shorts.yml
+    with:
+      brief: 'Barcelona vs Real Madrid official senior mens football trophies by comparable named competition. Use their official honours records; show available source counts, exclude friendlies and incompatible categories. No historical timeline and no inferred all-competition total.'
+      duration: '30'
+      format: Versus
+      artifact_label: web-trophies
+      require_real_data: true
+      require_source_id: WEB
+      upload_to_youtube: false

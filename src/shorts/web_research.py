@@ -12,7 +12,7 @@ import ipaddress
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, urldefrag
 from typing import Literal
 from bs4 import BeautifulSoup
 from ddgs import DDGS
@@ -95,7 +95,12 @@ def fetch(url,out,index,terms):
     (root/f'{index}.html').write_text(content)
     soup=BeautifulSoup(content,'html.parser')
     title=soup.title.get_text(' ',strip=True) if soup.title else url
-    links=[urljoin(url,a['href']) for a in soup.select('a[href]') if any(t.lower() in (a.get_text(' ',strip=True)+' '+a['href']).lower() for t in terms)]
+    link_terms=set(re.findall(r'[a-z]{4,}',' '.join(terms).lower()))
+    links=[]
+    for a in soup.select('a[href]'):
+        target=urldefrag(urljoin(url,a['href']))[0]
+        label=(a.get_text(' ',strip=True)+' '+urlparse(target).path).lower()
+        if target!=urldefrag(url)[0] and urlparse(target).scheme in ['http','https'] and any(t in label for t in link_terms):links.append(target)
     for tag in soup(['script','style','nav','footer','header','noscript','form']):tag.decompose()
     main=soup.find('main') or soup.find('article') or soup
     text=normalize(main.get_text(' ',strip=True))
@@ -119,15 +124,20 @@ def number(text):
     return value
 
 
-def validate_facts(findings,pages,subjects):
+def validate_facts(findings,pages,subjects,rejected=None):
     sources={p['id']:p for p in pages};seen={};rows=[]
     for fact in findings.facts:
-        if fact.subject not in subjects or fact.source_id not in sources:raise ResearchError('Unknown subject or source in extraction')
-        quote=normalize(fact.quote);value_text=normalize(fact.value_text)
-        if quote not in sources[fact.source_id]['text']:raise ResearchError('Evidence quote is absent from downloaded source')
-        if not re.search(r'(?<![\w\d.,])'+re.escape(value_text)+r'(?![\w\d.,])',quote,re.I):raise ResearchError('Numerical value is absent from its evidence quote')
-        value=number(value_text)
-        if fact.year is not None and str(fact.year) not in quote:raise ResearchError('Historical year is absent from evidence quote')
+        try:
+            if fact.subject not in subjects or fact.source_id not in sources:raise ResearchError('Unknown subject or source in extraction')
+            quote=normalize(fact.quote);value_text=normalize(fact.value_text)
+            if quote not in sources[fact.source_id]['text']:raise ResearchError('Evidence quote is absent from downloaded source')
+            if not re.search(r'(?<![\w\d.,])'+re.escape(value_text)+r'(?![\w\d.,])',quote,re.I):raise ResearchError('Numerical value is absent from its evidence quote')
+            value=number(value_text)
+            if fact.year is not None and str(fact.year) not in quote:raise ResearchError('Historical year is absent from evidence quote')
+        except ResearchError as exc:
+            if rejected is None:raise
+            rejected.append({'fact':fact.model_dump(),'reason':str(exc)})
+            continue
         key=(fact.subject,fact.category,fact.year)
         if key in seen:
             if seen[key]!=value:raise ResearchError('Conflicting numerical claims across sources')
@@ -137,7 +147,9 @@ def validate_facts(findings,pages,subjects):
 
 
 def assemble(brief,out,mode,plan,findings,pages):
-    rows=validate_facts(findings,pages,plan.subjects)
+    rejected=[]
+    rows=validate_facts(findings,pages,plan.subjects,rejected)
+    (out/'web_rejected_facts.json').write_text(json.dumps(rejected,indent=2))
     pair=plan.subjects[:2] if mode=='Versus' else plan.subjects
     codes={s:f'W{i+1}' for i,s in enumerate(pair)}
     places={c:{'name':s,'iso2':''} for s,c in codes.items()}
@@ -179,12 +191,13 @@ def assemble(brief,out,mode,plan,findings,pages):
 
 def retrieve(brief,out,mode='Versus'):
     logging.info('Planning public web research')
-    plan=model(WebPlan,'Plan web research for this comparison: '+json.dumps(brief)+'. Identify the exact subjects, scope, and 2–4 targeted search queries. Prefer primary/official statistics and honours records over blogs. Correct spelling. You may suggest likely official candidate URLs; these will be fetched and checked, never trusted without reading. focus_terms should identify relevant page sections. Default club sports to official senior first-team records; exclude friendlies unless requested. Do not supply numerical values.')
+    plan=model(WebPlan,'Plan web research for this comparison: '+json.dumps(brief)+'. Identify the exact subjects, scope, and 2–4 targeted search queries. Include a separate query for the authoritative records for each subject, rather than only head-to-head comparison queries. Prefer primary/official statistics and honours records over blogs. Correct spelling. You may suggest likely official candidate URLs; these will be fetched and checked, never trusted without reading. focus_terms should identify relevant page sections. Default club sports to official senior first-team records; exclude friendlies unless requested. Do not supply numerical values.')
     (out/'web_plan.json').write_text(plan.model_dump_json(indent=2))
-    logging.info('Searching %d web queries',len(plan.queries))
+    queries=list(dict.fromkeys(plan.queries+[subject+' '+' '.join(plan.focus_terms[:2])+' official records' for subject in plan.subjects]))[:6]
+    logging.info('Searching %d web queries',len(queries))
     results=[]
     with ThreadPoolExecutor(max_workers=3) as ex:
-        batches=list(ex.map(search,plan.queries))
+        batches=list(ex.map(search,queries))
     # Keep the bounded crawl balanced across subjects, rather than letting the
     # first query consume the entire source budget.
     for rank in range(max((len(batch) for batch in batches),default=0)):
@@ -202,7 +215,7 @@ def retrieve(brief,out,mode='Versus'):
             if 'error' in result:errors.append(result)
             else:pages.append(result)
     # Follow relevant discovered links from readable pages, without inventing paths.
-    follow=list(dict.fromkeys(u for p in pages for u in p['links'] if u not in urls))[:6]
+    follow=list(dict.fromkeys(u for p in pages for u in p['links'] if u not in urls))[:10]
     with ThreadPoolExecutor(max_workers=3) as ex:
         for result in ex.map(read,enumerate(follow,start=len(urls))):
             if 'error' in result:errors.append(result)

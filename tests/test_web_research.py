@@ -69,7 +69,7 @@ def test_complete_web_reader_searches_fetches_and_extracts(tmp_path,evidence,fin
         return {**r,'excerpt':r['text'],'links':[]}
     monkeypatch.setattr(web,'fetch',fetch)
     data=web.retrieve('A vs B trophies',tmp_path,'Versus')
-    assert queries==p.queries
+    assert queries[:len(p.queries)]==p.queries
     assert data['source']['id']=='WEB'
     assert len(json.loads((tmp_path/'web_evidence.json').read_text()))==4
 
@@ -91,3 +91,11 @@ def test_organizations_cannot_be_replaced_with_country_data(tmp_path,monkeypatch
     monkeypatch.setattr('shorts.discovery.retrieve',no_country_substitution)
     monkeypatch.setattr('shorts.web_research.retrieve',lambda *a,**k:{'source':{'id':'WEB'}})
     assert resolve('Team A vs Team B trophies',tmp_path,'Versus')['source']['id']=='WEB'
+
+
+def test_bad_extraction_does_not_erase_other_grounded_categories(tmp_path,evidence,findings):
+    findings.facts.append(findings.facts[0].model_copy(update={'category':'Invented category','quote':'Paraphrased but not verbatim 29'}))
+    data=assemble('A vs B',tmp_path,'Versus',plan(),findings,evidence)
+    assert len(data['category_frames'])==2
+    rejected=json.loads((tmp_path/'web_rejected_facts.json').read_text())
+    assert len(rejected)==1 and rejected[0]['fact']['category']=='Invented category'
