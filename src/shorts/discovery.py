@@ -30,11 +30,11 @@ class SingleIndicator(BaseModel):
     indicator_id: str
     explanation: str
 
-def model(schema,prompt):
+def model(schema,prompt,num_predict=1400):
     errors=[]
     for _ in range(3):
         try:
-            r=requests.post(os.getenv('OLLAMA_URL','http://127.0.0.1:11434')+'/api/generate',json={'model':os.getenv('SHORTS_MODEL','qwen3:4b'),'prompt':'/no_think\n'+prompt,'format':schema.model_json_schema(),'stream':False,'think':False,'options':{'temperature':0,'num_ctx':8192,'num_predict':1400,'seed':int(os.getenv('SHORTS_SEED','42'))}},timeout=(10,600))
+            r=requests.post(os.getenv('OLLAMA_URL','http://127.0.0.1:11434')+'/api/generate',json={'model':os.getenv('SHORTS_MODEL','qwen3:4b'),'prompt':'/no_think\n'+prompt,'format':schema.model_json_schema(),'stream':False,'think':False,'options':{'temperature':0,'num_ctx':8192,'num_predict':num_predict,'seed':int(os.getenv('SHORTS_SEED','42'))}},timeout=(10,600))
             r.raise_for_status()
             return schema.model_validate_json(r.json()['response'])
         except (ValueError,KeyError,requests.RequestException) as exc:

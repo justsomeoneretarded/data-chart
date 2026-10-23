@@ -26,3 +26,12 @@ jobs:
       artifact_label: unemployment
       require_real_data: true
       upload_to_youtube: false
+  web_comparison:
+    uses: ./.github/workflows/generate-shorts.yml
+    with:
+      brief: 'Barcelona vs Real Madrid official senior mens football trophies by comparable named competition. Use their official honours records; show available source counts, exclude friendlies and incompatible categories. No historical timeline and no inferred all-competition total.'
+      duration: '30'
+      format: Versus
+      artifact_label: web-trophies
+      require_real_data: true
+      upload_to_youtube: false

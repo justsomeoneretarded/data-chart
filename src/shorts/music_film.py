@@ -17,11 +17,13 @@ def make(args,out,mode):
     save('research.json',data);save('sources.json',[data['source']])
     save('analysis.json',{'leader_changes':data['leader_changes'],'final_ranking':data['rows'],'pair':data['pair'],'method':'Benchmark animation; see research.json data_kind and limitation for provenance. Display ranks transition between source endpoints.','source_years':data['years'],'coverage_by_year':{y:len(v) for y,v in data['tables'].items()}})
     events=[{'year':r['year'],'code':r['code'],'time':1.2+(r['year']-data['start_year'])/(data['year']-data['start_year'])*(args.duration-3.7)} for r in data['leader_changes']]
-    save('storyboard.json',{'format':mode,'start':0,'end':args.duration,'source_years':data['years'],'intro_seconds':1.2,'final_hold_seconds':2.5,'data':'dataset.csv','start_year':data['start_year'],'end_year':data['year'],'source_leader_events':events,'icon_unit':data['unit'],'value_per_icon':max(v for table in data['tables'].values() for v in table.values())/40 if any(v for table in data['tables'].values() for v in table.values()) else 1,'narration':False,'camera':'Fixed plain comparison canvas','motion':'Continuous annual interpolation, plain moving bars or icon columns, value counters and year only','safe_area':[24,65,1056,1830]})
+    save('storyboard.json',{'format':mode,'start':0,'end':args.duration,'source_years':([] if data.get('category_frames') else data['years']),'categories':data.get('category_frames',[]),'intro_seconds':1.2,'final_hold_seconds':2.5,'data':'dataset.csv','start_year':data['start_year'],'end_year':data['year'],'source_leader_events':events,'icon_unit':data['unit'],'value_per_icon':max(v for table in data['tables'].values() for v in table.values())/40 if any(v for table in data['tables'].values() for v in table.values()) else 1,'narration':False,'camera':'Fixed plain comparison canvas','motion':'Continuous annual interpolation, plain moving bars or icon columns, value counters and year only','safe_area':[24,65,1056,1830]})
     names=[data['places'][c]['name'] for c in data['pair']]
-    title=(f"{data['metric']} race: {data['start_year']}–{data['year']}" if mode=='Race' else f"{names[0]} vs {names[1]}: {data['metric']}")[:95]
+    title=(f"{names[0]} vs {names[1]}: {data['metric']}" if data.get('category_frames') else f"{data['metric']} race: {data['start_year']}–{data['year']}" if mode=='Race' else f"{names[0]} vs {names[1]}: {data['metric']}")[:95]
     meta=metadata(SimpleNamespace(title=title),data,out,narrated=False)
     meta['alt_text']=f"{mode} animation of {data['source']['publisher']} {data['metric']} estimates, {data['start_year']} to {data['year']}. Source benchmark observations are interpolated during motion."
+    if data.get('category_frames'):
+        meta['alt_text']=f"Category comparison of {names[0]} and {names[1]}; values extracted from quoted web source records."
     save('metadata.json',meta)
     (out/'script.txt').write_text(f"MUSIC-FIRST VISUAL FILM — NO SPOKEN NARRATION\n\n{title}\n\n{data['definition']}\n\n{data['limitation']}")
     logging.info('Rendering %s with original rhythmic background music',mode)

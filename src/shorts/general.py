@@ -88,4 +88,9 @@ def resolve(brief,out,mode='Race'):
     except (ValueError,requests.RequestException,KeyError,TypeError) as exc:
         reason=str(exc)
         (out/'discovery_report.json').write_text(json.dumps({'status':'no usable real comparison','reason':reason},indent=2))
-        return retrieve(brief,out,mode,reason=reason)
+        from .web_research import retrieve as web_retrieve
+        try:
+            return web_retrieve(brief,out,mode)
+        except (ValueError,requests.RequestException,KeyError,TypeError) as web_exc:
+            (out/'web_research_report.json').write_text(json.dumps({'status':'no usable web comparison','reason':str(web_exc)},indent=2))
+            return retrieve(brief,out,mode,reason=reason+'; web research: '+str(web_exc))

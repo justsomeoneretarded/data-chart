@@ -19,7 +19,7 @@ There is no hardcoded metric list, demographic blacklist, country alias map, or 
 4. Fetch published observations directly from the source and validate them.
 5. If discovery produces no usable comparison, generate a private illustrative simulation and record that provenance in the accompanying files.
 
-The current real-data discovery provider is the World Bank catalog. It supports comparing countries on one indicator, or indicator variants (such as demographic groups) within one country. This removes per-topic adapters, but does **not** yet provide unrestricted web-table research. Topics absent from that source can still fall back to simulation. Topic-specific legacy connectors have been removed.
+The first real-data discovery provider is the World Bank catalog, followed by general web research. It supports comparing countries on one indicator, or indicator variants (such as demographic groups) within one country. Topics absent from that catalog are researched on the public web before simulation is considered. Topic-specific legacy connectors have been removed.
 
 The model selects metadata, never observations for a real-data run. Unknown IDs, duplicate records, nonfinite or negative values, incompatible declared source units, and insufficient comparable coverage are rejected. Model-assisted semantic selection can still be wrong; inspect the selected definitions. The longest common continuous annual interval is used. Unavailable requested years are omitted rather than invented. Animation interpolates between published annual values.
 
@@ -65,3 +65,11 @@ Generation and artifact delivery are the default; uploading is off. To enable pr
 - Review selected series and units when the comparison is unexpected.
 - Missing national flags do not block rendering.
 - Ollama is needed for all formats; speech models are needed only for Explainer.
+
+## Web research fallback
+
+If catalog discovery fails, the workflow now searches the public web, opens candidate pages and relevant discovered links, selects relevant sources, and extracts numerical records with exact quotes. It uses public search without an API key. Every accepted number must occur literally in its quoted source passage; every historical year must also occur in the quote. Sources, raw downloaded pages, hashes, retrieval times, search results and evidence records are retained in the artifact.
+
+Sources containing current category counts produce a category comparison rather than an invented historical timeline. For example, Versus can compare Barcelona and Real Madrid by comparable named competition from their honours pages. Undated source snapshots show no historical year. The workflow does not infer zero from omitted categories or claim an all-competition total from incomplete categories. Historical requests still require actual dated source observations; otherwise they can fall back to the already-enabled private simulation mode.
+
+Search availability, readable page content, source freshness and model-assisted interpretation remain limitations. Exact quotes establish numerical grounding, not universal factual verification: archived pages can be stale, and definitions can differ. Inspect `web_evidence.json`, `web_findings.json`, `web_search_results.json` and `web_fetch_report.json`. Dynamic pages, login-only datasets, PDFs and arbitrary CSV schemas are not yet supported by this reader. The source-search path is general; there is no football-specific data adapter or hardcoded trophy count.

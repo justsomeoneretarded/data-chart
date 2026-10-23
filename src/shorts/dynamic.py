@@ -117,7 +117,7 @@ class Film:
         self.ranks={int(y):{c:i for i,c in enumerate(sorted(table,key=lambda c:(-table[c],c)))} for y,table in data['tables'].items()}
         self.total_max=max(v for table in data['tables'].values() for v in table.values())
         self.name=lambda c:data['places'][c]['name']
-        self.unit=self.total_max/40 if self.total_max else 1
+        self.unit=max(1,math.ceil(self.total_max/40)) if data.get('integer_values') else self.total_max/40 if self.total_max else 1
     def fill(self,code):
         base=np.array(rgb(color(code)),dtype=float)
         if self.style=='Cinematic':base*=.8
@@ -129,13 +129,23 @@ class Film:
     def frame(self,t,duration,preview=False):
         data=self.data
         im=Image.new('RGB',(W,H),'white');d=ImageDraw.Draw(im)
+        frames=data.get('category_frames')
         title=data['metric']
+        if frames:
+            active=max(0,duration-3.7);segment=active/len(frames)
+            elapsed=max(0,t-1.2);index=min(len(frames)-1,int(elapsed/segment))
+            item=frames[index];local=elapsed-index*segment
+            progress=max(0,min(1,local/max(.1,segment-.5)))
+            values={c:v*progress for c,v in item['values'].items()}
+            lo=hi=index;fraction=0;year=item['year'];title=item['label']
+        else:
+            year=timeline(t,duration,data);values,lo,hi,fraction=snapshot(data,year)
         text(d,title,(30,65),64,color='#151515',max_width=1020)
-        year=timeline(t,duration,data);values,lo,hi,fraction=snapshot(data,year)
         if self.mode=='Race':self.race(im,d,t,values,lo,hi,fraction)
         else:self.versus(im,d,t,values)
-        label=str(int(year+1e-6));f=font(130)
-        text(d,label,(1030-d.textlength(label,font=f),1660),130,color='#777777')
+        if year is not None:
+            label=str(int(year+1e-6));f=font(130)
+            text(d,label,(1030-d.textlength(label,font=f),1660),130,color='#777777')
         return im.resize((540,960),Image.Resampling.LANCZOS) if preview else im
 
     def race(self,im,d,t,values,lo,hi,fraction):
@@ -167,7 +177,7 @@ class Film:
             size=48
             while d.textlength(name,font=font(size))>480 and size>20:size-=1
             text(d,name,(x+(540-d.textlength(name,font=font(size)))/2,350),size,color='#151515')
-            label=live_fmt(v);size=98
+            label=(str(round(v)) if data.get('category_frames') and data.get('integer_values') else live_fmt(v));size=98
             while d.textlength(label,font=font(size))>480 and size>20:size-=1
             text(d,label,(x+(540-d.textlength(label,font=font(size)))/2,450),size,color=accent)
             count=v/self.unit
