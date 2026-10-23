@@ -176,9 +176,13 @@ def retrieve(brief,out,mode='Versus'):
     (out/'web_plan.json').write_text(plan.model_dump_json(indent=2))
     results=[]
     with ThreadPoolExecutor(max_workers=3) as ex:
-        for found in ex.map(search,plan.queries):results.extend(found)
+        batches=list(ex.map(search,plan.queries))
+    # Keep the bounded crawl balanced across subjects, rather than letting the
+    # first query consume the entire source budget.
+    for rank in range(max((len(batch) for batch in batches),default=0)):
+        results.extend(batch[rank] for batch in batches if rank<len(batch))
     (out/'web_search_results.json').write_text(json.dumps(results,indent=2))
-    urls=list(dict.fromkeys(plan.candidate_urls+[r['url'] for r in results]))[:12]
+    urls=list(dict.fromkeys(plan.candidate_urls+[r['url'] for r in results]))[:16]
     pages=[];errors=[]
     def read(item):
         i,url=item
