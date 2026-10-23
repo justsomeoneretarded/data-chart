@@ -4,6 +4,7 @@ import json
 import math
 import os
 from datetime import datetime, timezone
+from typing import Literal
 import requests
 from pydantic import BaseModel, Field, model_validator
 from .research import session
@@ -18,6 +19,7 @@ class Comparison(BaseModel):
     years: list[int] = Field(min_length=2, max_length=12)
     entries: list[Entry] = Field(min_length=2, max_length=15)
     cumulative: bool
+    icon: Literal['people','coins','heart','screen','trophy','bar'] = 'bar'
 
     @model_validator(mode='after')
     def validate_table(self):
@@ -77,7 +79,7 @@ Return only the requested JSON schema.'''
         for y,t in tables.items():
             for c,v in t.items():w.writerow({'code':c,**places[c],'year':y,'value':v})
     limitation='Illustrative simulation, not historical measurements. All generated benchmark values are invented; background references do not verify them. Intermediate frames interpolate the simulated benchmarks.'
-    return {'brief':brief,'metric':plan.title,'unit':plan.unit,'definition':f'{plan.title} ({plan.unit})','year':plan.years[-1],'start_year':plan.years[0],'years':plan.years,'tables':tables,'places':places,'pair':pair,'coverage':len(places),'rows':[{'code':c,'name':places[c]['name'],'year':plan.years[-1],'value':latest[c]} for c in sorted(latest,key=latest.get,reverse=True)],'leader_changes':leaders,'data_kind':'simulation','interpolation':'integer' if plan.cumulative else 'linear','source':{'id':'SIMULATION','publisher':'Private illustrative simulation','metadata_url':'comparison_plan.json','url':'comparison_plan.json','definition':limitation,'fallback_reason':reason,'background_references':[r['url'] for r in refs]},'limitation':limitation}
+    return {'brief':brief,'metric':plan.title,'unit':plan.unit,'definition':f'{plan.title} ({plan.unit})','year':plan.years[-1],'start_year':plan.years[0],'years':plan.years,'tables':tables,'places':places,'pair':pair,'coverage':len(places),'rows':[{'code':c,'name':places[c]['name'],'year':plan.years[-1],'value':latest[c]} for c in sorted(latest,key=latest.get,reverse=True)],'leader_changes':leaders,'data_kind':'simulation','icon':plan.icon,'interpolation':'integer' if plan.cumulative else 'linear','source':{'id':'SIMULATION','publisher':'Private illustrative simulation','metadata_url':'comparison_plan.json','url':'comparison_plan.json','definition':limitation,'fallback_reason':reason,'background_references':[r['url'] for r in refs]},'limitation':limitation}
 
 def resolve(brief,out,mode='Race'):
     from .discovery import retrieve as discover
