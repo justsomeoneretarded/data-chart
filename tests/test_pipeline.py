@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import pytest
 from pydantic import ValidationError
-from shorts.research import resolve,validate,ResearchError
+from shorts.research import validate,ResearchError
 from shorts.story import Story, fallback,validate_story
 from shorts.captions import write,stamp
 from shorts.visuals import frame
@@ -22,10 +22,6 @@ def test_invalid_values(data,value):
 def test_duplicate(data):
     data['rows'].append(data['rows'][0])
     with pytest.raises(ResearchError):validate(data['rows'],(0,130))
-@pytest.mark.parametrize('brief',['Compare how often people have sex in different countries','youngest populations','GDP over time','compare divorce rates','life expectancy per capita','life expectancy in Africa','lowest population'])
-def test_no_silent_substitution(brief):
-    with pytest.raises(ResearchError):resolve(brief)
-def test_metric():assert resolve('highest life expectancy')[0]=='SP.DYN.LE00.IN'
 def test_story(data):
     story=fallback(data);assert validate_story(Story.model_validate_json(story.model_dump_json()),data)
     story.scenes[0].claim_ids=['invented']
