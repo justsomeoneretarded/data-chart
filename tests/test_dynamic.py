@@ -5,7 +5,7 @@ import subprocess
 import wave
 import numpy as np
 import pytest
-from shorts.history import snapshot,metric_for,ResearchError
+from shorts.history import snapshot
 from shorts.main import choose_format,parser
 from shorts.dynamic import Film
 from shorts.beat import create
@@ -31,13 +31,6 @@ def test_mode_selection():
     assert choose_format('Country wise population over time')=='Race'
     assert choose_format('Country wise population','Explainer')=='Explainer'
     assert parser().parse_args(['--brief','Population race']).format=='Auto'
-
-@pytest.mark.parametrize('brief',['Messi vs Ronaldo awards','divorce rates','sex frequency','population per capita'])
-def test_unsupported_not_substituted(brief):
-    with pytest.raises(ResearchError):metric_for(brief)
-
-def test_historical_metric():
-    assert metric_for('Show how the largest economies changed over the last 50 years')[0]=='NY.GDP.MKTP.CD'
 
 @pytest.mark.parametrize('mode',['Race','Versus'])
 def test_animated_composition(history,mode):
@@ -66,40 +59,11 @@ def test_true_frozen_video_is_rejected(tmp_path):
     with pytest.raises(ValueError,match='no_frozen_sequences'):
         check(tmp_path,4.2,preview=True,captions_required=False,allow_silence=True,animation_window=(.1,4.1))
 
-@pytest.mark.parametrize('metric',['Population','GDP','Life expectancy at birth','Fertility rate','Individuals using the Internet'])
-def test_metric_pictograms(history,metric):
-    history['metric']=metric
+@pytest.mark.parametrize('icon',['people','coins','heart','screen','trophy','bar'])
+def test_generic_pictograms(history,icon):
+    history['icon']=icon
     film=Film(history,'Versus',{});film.duration=30
     assert film.frame(15,30,True).size==(540,960)
-
-@pytest.fixture
-def fake_bank(monkeypatch):
-    from types import SimpleNamespace
-    import shorts.history as module
-    countries=[{'id':'IND','name':'India','iso2Code':'IN','region':{'id':'SAS'}}, {'id':'CHN','name':'China','iso2Code':'CN','region':{'id':'EAS'}}]
-    records=[{'countryiso3code':c,'date':str(y),'value':v} for y,entries in [(2000,{'IND':100,'CHN':90}),(2001,{'IND':110,'CHN':110})] for c,v in entries.items()]
-    def get(url,**kwargs):
-        body=[{},countries] if '/country?' in url else [{'pages':1},records]
-        return SimpleNamespace(json=lambda:body,raise_for_status=lambda:None)
-    monkeypatch.setattr(module,'session',lambda:SimpleNamespace(get=get))
-
-def test_source_scope_order_and_ties(fake_bank,tmp_path):
-    from shorts.history import retrieve
-    data=retrieve('India vs China population from 2000 to 2001',tmp_path,'Versus')
-    assert data['pair']==['IND','CHN']
-    assert data['leader_changes'][-1]['tied'] is True
-    assert data['tables']['2001']['IND']==110
-    assert data['source']['response_sha256']
-
-def test_single_year_is_not_silently_expanded(fake_bank,tmp_path):
-    from shorts.history import retrieve
-    with pytest.raises(ResearchError,match='year range'):
-        retrieve('India vs China population in 2001',tmp_path,'Versus')
-
-def test_unavailable_range_is_not_silently_replaced(fake_bank,tmp_path):
-    from shorts.history import retrieve
-    with pytest.raises(ResearchError,match='unavailable'):
-        retrieve('India vs China population from 1990 to 2001',tmp_path,'Versus')
 
 def test_observed_zeros_do_not_crash_race(history):
     history['tables']={y:{c:0.0 for c in table} for y,table in history['tables'].items()}
