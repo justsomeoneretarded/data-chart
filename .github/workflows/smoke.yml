@@ -1,4 +1,5 @@
 name: Live data smoke test
+# Verify the complete pipeline after removal of legacy topic rules.
 on:
   workflow_dispatch:
   push:
