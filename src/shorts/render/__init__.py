@@ -51,6 +51,16 @@ def auto_duration(ds: Dataset, fmt: str = "Auto") -> int:
     return int(round(min(90, max(30, active + fixed))))
 
 
+def max_duration(ds: Dataset, fmt: str = "Auto") -> int:
+    """Longest length that still looks alive for layouts with a fixed number of items."""
+    layout = choose_layout(ds, fmt)
+    if layout is VersusCategories:
+        return int(max(30, len(ds.categories[:VersusCategories.MAX_ROWS]) * 6.5 + 4.6))
+    if layout is Countdown:
+        return int(max(30, min(10, len(ds.snapshot)) * 9 + 4.6))
+    return 90
+
+
 def render(ds: Dataset, out: Path, *, duration: int = 50, fmt: str = "Auto", theme: str = "Light",
            music: str = "Auto", seed: int = 42, preview: bool = False) -> dict:
     from ..music import prepare

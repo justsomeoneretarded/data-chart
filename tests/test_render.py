@@ -88,3 +88,11 @@ def test_full_pipeline_passes_quality_check_at_default_length(tmp_path, monkeypa
     getattr(fx, name)().save(tmp_path)
     args = parser().parse_args(["--dataset", str(tmp_path / "dataset.json"), "--out", str(tmp_path / "o"), "--duration", "50", "--music", "None"])
     assert run(args) == 0, (tmp_path / "o" / "failure.json").read_text()
+
+
+def test_long_typed_duration_is_capped_for_few_items(tmp_path, monkeypatch):
+    monkeypatch.setenv("SHORTS_OFFLINE", "1")
+    fx.categories().save(tmp_path)
+    args = parser().parse_args(["--dataset", str(tmp_path / "dataset.json"), "--out", str(tmp_path / "o"), "--duration", "90", "--music", "None"])
+    assert run(args) == 0, (tmp_path / "o" / "failure.json").read_text()
+    assert "capped" in (tmp_path / "o" / "production_report.md").read_text()

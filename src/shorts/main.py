@@ -69,10 +69,15 @@ def run(args) -> int:
 
         from .publishing import metadata, upload
         from .quality import check
-        from .render import auto_duration, render
+        from .render import auto_duration, max_duration, render
+        capped = ""
         if auto:
             args.duration = auto_duration(ds, args.format)
             log.info("Auto duration: %ss", args.duration)
+        elif args.duration > (limit := max_duration(ds, args.format)):
+            capped = f" (asked for {args.duration}s; capped — too few items to fill it)"
+            log.info("Requested %ss but only %ss suits this content", args.duration, limit)
+            args.duration = limit
         stage = "rendering"
         report = render(ds, out, duration=args.duration, fmt=args.format, theme=args.theme,
                         music=args.music, seed=args.seed, preview=args.preview)
@@ -84,7 +89,7 @@ def run(args) -> int:
             upload(out, meta)
         (out / "production_report.md").write_text(
             f"# ✅ {meta['title']}\n\n"
-            f"- Layout: **{report['layout']}**, theme {report['theme']}, {args.duration}s{' (auto)' if auto else ''}\n"
+            f"- Layout: **{report['layout']}**, theme {report['theme']}, {args.duration}s{' (auto)' if auto else capped}\n"
             f"- Data: {ds.source.publisher} — [{ds.source.title}]({ds.source.url})\n"
             f"- Subjects: {', '.join(e.name for e in ds.entities)}\n"
             f"- Callouts: {'; '.join(c['text'] for c in report['callouts']) or 'none'}\n"
