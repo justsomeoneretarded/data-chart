@@ -79,3 +79,12 @@ def test_duration_input_accepts_auto_and_rejects_nonsense(tmp_path, monkeypatch)
     args = parser().parse_args(["--dataset", str(tmp_path / "dataset.json"), "--out", str(tmp_path / "bad"), "--duration", "soon"])
     assert run(args) == 1
     assert parser().parse_args([]).duration == "Auto"
+
+
+@pytest.mark.parametrize("name", ["countdown", "categories"])
+def test_full_pipeline_passes_quality_check_at_default_length(tmp_path, monkeypatch, name):
+    """Layouts with reveals must never sit frozen long enough to fail the check (bug seen in CI)."""
+    monkeypatch.setenv("SHORTS_OFFLINE", "1")
+    getattr(fx, name)().save(tmp_path)
+    args = parser().parse_args(["--dataset", str(tmp_path / "dataset.json"), "--out", str(tmp_path / "o"), "--duration", "50", "--music", "None"])
+    assert run(args) == 0, (tmp_path / "o" / "failure.json").read_text()

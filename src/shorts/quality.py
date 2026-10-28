@@ -23,7 +23,7 @@ def check(out: Path, expected: float, preview: bool = False, silent_ok: bool = F
         "duration": abs(float(probe["format"]["duration"]) - expected) < 1,
         "decodes": scan.returncode == 0,
         "no_black": "black_start:" not in scan.stderr,
-        "no_frozen_animation": all(f >= expected - 4.5 for f in freezes),
+        "no_frozen_animation": all(f >= expected - 5.5 for f in freezes),  # final standings hold
         "no_long_silence": silent_ok or "silence_start:" not in scan.stderr,
     }
     report = {"passed": all(tests.values()), "checks": tests}

@@ -89,6 +89,9 @@ jobs:
         if: always()
         run: |
           mkdir -p output
+          if [ -f output/failure.json ]; then
+            python -c "import json; f=json.load(open('output/failure.json')); print('::error title=Failed during ' + f['stage'] + '::' + f['error'].replace(chr(10), ' ')[:900])"
+          fi
           [ -f output/production_report.md ] && cat output/production_report.md >> "$GITHUB_STEP_SUMMARY" || echo "Setup failed before generation; see the log above." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload result
