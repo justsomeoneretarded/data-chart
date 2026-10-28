@@ -21,7 +21,8 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--brief", default=env("INPUT_BRIEF"))
     p.add_argument("--format", choices=["Auto", "Race", "Versus"], default=env("INPUT_FORMAT") or "Auto")
-    p.add_argument("--duration", type=int, default=int(env("INPUT_DURATION") or 50))
+    p.add_argument("--duration", default=(env("INPUT_DURATION") or "Auto").strip() or "Auto",
+                   help="Seconds (30-90), or Auto to size the video to the data")
     p.add_argument("--theme", choices=["Light", "Dark"], default=env("INPUT_THEME") or "Light")
     p.add_argument("--music", choices=["Auto", "Procedural", "None"], default=env("INPUT_MUSIC") or "Auto")
     p.add_argument("--seed", type=int, default=int(env("INPUT_SEED") or 42))
@@ -42,8 +43,14 @@ def run(args) -> int:
     started = time.monotonic()
     stage = "input"
     try:
-        if not 30 <= args.duration <= 90:
-            raise ValueError("Duration must be 30–90 seconds")
+        auto = str(args.duration).strip().lower() in ("", "auto")
+        if not auto:
+            try:
+                args.duration = int(float(args.duration))
+            except ValueError:
+                raise ValueError("Duration must be a number of seconds (30–90) or Auto")
+            if not 30 <= args.duration <= 90:
+                raise ValueError("Duration must be 30–90 seconds")
         if args.dataset:
             ds = Dataset.load(args.dataset)
         else:
@@ -62,7 +69,10 @@ def run(args) -> int:
 
         from .publishing import metadata, upload
         from .quality import check
-        from .render import render
+        from .render import auto_duration, render
+        if auto:
+            args.duration = auto_duration(ds, args.format)
+            log.info("Auto duration: %ss", args.duration)
         stage = "rendering"
         report = render(ds, out, duration=args.duration, fmt=args.format, theme=args.theme,
                         music=args.music, seed=args.seed, preview=args.preview)
@@ -74,7 +84,7 @@ def run(args) -> int:
             upload(out, meta)
         (out / "production_report.md").write_text(
             f"# ✅ {meta['title']}\n\n"
-            f"- Layout: **{report['layout']}**, theme {report['theme']}, {args.duration}s\n"
+            f"- Layout: **{report['layout']}**, theme {report['theme']}, {args.duration}s{' (auto)' if auto else ''}\n"
             f"- Data: {ds.source.publisher} — [{ds.source.title}]({ds.source.url})\n"
             f"- Subjects: {', '.join(e.name for e in ds.entities)}\n"
             f"- Callouts: {'; '.join(c['text'] for c in report['callouts']) or 'none'}\n"

@@ -61,3 +61,21 @@ def test_no_data_means_no_video(tmp_path, monkeypatch):
     assert run(args) == 1
     assert not (tmp_path / "video.mp4").exists()
     assert "nothing was invented" in (tmp_path / "production_report.md").read_text()
+
+
+def test_auto_duration_follows_the_data():
+    from shorts.render import auto_duration
+    assert auto_duration(fx.race()) == 34          # 33 years of race
+    assert auto_duration(fx.countdown()) == 33     # 10 reveals
+    assert auto_duration(fx.categories()) == 30    # short content is held at the 30s minimum
+    long = fx.race()
+    long.series = {y + 1900 - 1990: row for y, row in long.series.items()} | long.series
+    assert auto_duration(long) == 90               # long histories are capped
+
+
+def test_duration_input_accepts_auto_and_rejects_nonsense(tmp_path, monkeypatch):
+    monkeypatch.setenv("SHORTS_OFFLINE", "1")
+    fx.countdown().save(tmp_path)
+    args = parser().parse_args(["--dataset", str(tmp_path / "dataset.json"), "--out", str(tmp_path / "bad"), "--duration", "soon"])
+    assert run(args) == 1
+    assert parser().parse_args([]).duration == "Auto"

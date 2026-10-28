@@ -36,6 +36,21 @@ def choose_layout(ds: Dataset, requested: str = "Auto"):
     return Countdown
 
 
+def auto_duration(ds: Dataset, fmt: str = "Auto") -> int:
+    """Size the video to its content: enough time per year / item to follow, within 30-90s."""
+    layout = choose_layout(ds, fmt)
+    fixed = 4.6  # intro + final hold
+    if ds.kind == "timeseries":
+        years = ds.years[-1] - ds.years[0]
+        per_year = 0.55 if layout is VersusTimeline else 0.9  # races have more to read per year
+        active = years * per_year
+    elif layout is VersusCategories:
+        active = len(ds.categories[:VersusCategories.MAX_ROWS]) * 3.5
+    else:  # countdown
+        active = min(10, len(ds.snapshot)) * 2.8
+    return int(round(min(90, max(30, active + fixed))))
+
+
 def render(ds: Dataset, out: Path, *, duration: int = 50, fmt: str = "Auto", theme: str = "Light",
            music: str = "Auto", seed: int = 42, preview: bool = False) -> dict:
     from ..music import prepare

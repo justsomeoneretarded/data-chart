@@ -13,8 +13,8 @@ on:
         type: choice
         options: [Auto, Race, Versus]
       duration:
-        description: "Seconds (30–90)"
-        default: "50"
+        description: "Auto sizes the video to the data, or type seconds (30–90)"
+        default: Auto
         type: string
       theme:
         default: Light
