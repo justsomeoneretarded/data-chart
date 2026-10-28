@@ -31,7 +31,8 @@ Today's year: {year}
 Rules:
 - Correct spelling. Keep the metric exactly as asked; do not substitute a related metric.
 - subjects: only things explicitly named, in the same order. "Countries by X" or "top countries" → subjects = [].
-- "Male vs female population in the USA" → subjects ["Male", "Female"], within "United States", metric "population".
+- "Male vs female population in the USA" → subjects ["Male", "Female"], within "United States", metric "population", subject_type "countries".
+- Groups compared worldwide ("in the world", "globally", or no place named) → within "World", subject_type "countries".
 - Use common English names ("United States", "China", "FC Barcelona").
 - over_time: true when the request gives a year range, says "over time", "history", "since", "race", or the metric naturally changes year to year and no single date is implied.
 - search_queries: 2-4 short queries. Include one plain query for the metric alone (e.g. "life expectancy") and, for non-country subjects, one that names the subjects (e.g. "Barcelona Real Madrid honours").

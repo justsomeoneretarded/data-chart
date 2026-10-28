@@ -180,3 +180,45 @@ def test_owid_groups_from_separate_charts(monkeypatch, tmp_path):
     assert [e.name for e in ds.entities] == ["Male", "Female"]
     assert ds.series[2023] == {"E0": 4060000000.0, "E1": 4030000000.0}
     assert ds.title == "World population"
+
+
+def test_groups_without_a_place_default_to_world(monkeypatch, tmp_path):
+    monkeypatch.setattr(owid, "http", lambda: SexSession())
+    monkeypatch.setattr(owid, "ask", lambda schema, prompt, **k: schema(index=0, reason="match"))
+    monkeypatch.setattr(common, "ask", lambda schema, prompt, **k: schema(matches=["World"] if "World" in prompt.split("Requested:")[1][:30] else [""]))
+    intent = Intent(metric="population", subjects=["Male", "Female"], subject_type="other", over_time=True, search_queries=["population"])
+    ds = owid.retrieve(intent, tmp_path)
+    assert [e.name for e in ds.entities] == ["Male", "Female"]
+
+
+def test_every_brief_tries_both_sources(monkeypatch, tmp_path):
+    from shorts import sources
+    tried = []
+    def fail(name):
+        def f(*a, **k):
+            tried.append(name)
+            raise DataError("nope")
+        return f
+    monkeypatch.setattr(sources.owid, "retrieve", fail("owid"))
+    monkeypatch.setattr(sources.wikipedia, "retrieve", fail("wikipedia"))
+    intent = Intent(metric="x", subjects=["Male", "Female"], subject_type="other", over_time=True, search_queries=["x"])
+    with pytest.raises(DataError):
+        sources.resolve(intent, "brief", tmp_path)
+    assert tried == ["wikipedia", "owid"]
+
+
+def test_wikipedia_retry_never_repeats_a_rejected_table(monkeypatch, tmp_path):
+    tables = _tables()
+    monkeypatch.setattr(wikipedia, "search", lambda q: ["El Clásico"])
+    monkeypatch.setattr(wikipedia, "download", lambda t: open("tests/fixtures/honours.html").read())
+    seen = []
+    def ask(schema, prompt, **k):
+        ids = [t.id for t in tables if f'"table_id": "{t.id}"' in prompt]
+        seen.append(ids[0])
+        # always point at the first table offered, with a layout that cannot work
+        return schema(table_id=ids[0], layout="subjects_by_year_columns", subject_column=0, title="x", unit="x")
+    monkeypatch.setattr(wikipedia, "ask", ask)
+    intent = Intent(metric="x", subject_type="other", over_time=True, search_queries=["x"])
+    with pytest.raises(DataError):
+        wikipedia.retrieve(intent, tmp_path, "brief")
+    assert len(seen) == len(set(seen)) == 2  # both tables tried once, then it stops

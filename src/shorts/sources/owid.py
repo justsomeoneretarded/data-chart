@@ -289,6 +289,13 @@ def _groups_from_separate_charts(intent: Intent, out: Path) -> Dataset:
 
 
 def retrieve(intent: Intent, out: Path) -> Dataset:
+    if not intent.within and len(intent.subjects) >= 2:
+        # Subjects that aren't places (e.g. "male" vs "female") are groups of the whole world.
+        try:
+            return _retrieve_single(intent, out)
+        except DataError as exc:
+            log.info("Subjects are not places in OWID (%s); treating them as groups of the World", exc)
+            intent = intent.model_copy(update={"within": "World"})
     if intent.within and len(intent.subjects) >= 2:
         # Prefer one chart holding every group; fall back to one chart per group.
         try:
