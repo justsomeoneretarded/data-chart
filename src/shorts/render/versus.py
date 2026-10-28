@@ -6,8 +6,8 @@ import math
 from PIL import Image, ImageDraw
 
 from ..story import Interp, moments
-from .base import Callout, Scene
-from .kit import (SAFE_BOTTOM, ease_in_out, SAFE_LEFT, SAFE_RIGHT, SAFE_RIGHT_LOW, W, ease_out, fit, font, mix, nice_ticks)
+from .base import Callout, Scene, Winner
+from .kit import (SAFE_BOTTOM, ease_in_out, uniform_font, ellipsize, SAFE_LEFT, SAFE_RIGHT, SAFE_RIGHT_LOW, W, ease_out, fit, font, mix, nice_ticks)
 
 CARD_GAP = 40
 
@@ -33,9 +33,11 @@ class Duel(Scene):
                                 outline=mix(th.bg, color if eid == leader and not tied else th.grid, appear), width=4)
             badge = 112
             self.badges.paste(im, eid, x + (self.card_w - badge) / 2, y + 30, badge)
-            name, f = fit(d, self.ds.name(eid), self.card_w - 40, 40, "semibold", 24)
+            f = uniform_font(d, [self.ds.name(self.a), self.ds.name(self.b)], self.card_w - 40, 40, "semibold", 26)
+            name = ellipsize(d, self.ds.name(eid), f, self.card_w - 40)
             d.text((x + (self.card_w - d.textlength(name, font=f)) / 2, y + 158), name, font=f, fill=th.ink)
-            value, vf = fit(d, self.fmt(values.get(eid, 0)), self.card_w - 36, 78, "black", 34)
+            vf = uniform_font(d, [self.fmt(values.get(self.a, 0)), self.fmt(values.get(self.b, 0))], self.card_w - 36, 78, "black", 34)
+            value = self.fmt(values.get(eid, 0))
             d.text((x + (self.card_w - d.textlength(value, font=vf)) / 2, y + 222), value, font=vf, fill=th.ink)
             if eid == leader and not tied and appear > 0.9:
                 chip = "AHEAD"
@@ -71,16 +73,11 @@ class VersusTimeline(Duel):
             w = max(final, key=final.get)
             other = self.b if w == self.a else self.a
             ratio = final[w] / final[other] if final[other] else float("inf")
-            gap = f"{ratio:.1f}× " if ratio >= 1.5 else f"{(ratio - 1) * 100:.0f}% "
-            self.callouts.append(Callout(self.duration - self.outro + 0.2, self.duration,
-                                         f"{ds.name(w)} ends {gap}ahead in {self.y1}", self.colors[w]))
+            gap = f"{ratio:.1f}× ahead" if ratio >= 1.5 else f"{(ratio - 1) * 100:.1f}% ahead" if ratio < 1.1 else f"{(ratio - 1) * 100:.0f}% ahead"
+            self.winner = Winner(w, self.fmt(final[w]), f"{gap} in {self.y1}")
 
     def time_of(self, year: float) -> float:
         return self.intro + (year - self.y0) / max(1e-9, self.y1 - self.y0) * self.active
-
-    def subtitle(self) -> str:
-        span = f"{self.y0}–{self.y1}"
-        return f"{self.ds.unit}  ·  {span}" if self.ds.unit else span
 
     def xy(self, year: float, value: float) -> tuple[float, float]:
         x0, y0, x1, y1 = self.chart
@@ -140,7 +137,7 @@ class VersusTimeline(Duel):
                 d.ellipse((x - 13, y - 13, x + 13, y + 13), fill=th.card)
                 d.ellipse((x - 9, y - 9, x + 9, y + 9), fill=self.colors[e])
         self.callout(im, d, t, self.header_bottom + 10)
-        return im
+        return self.winner_banner(im, t)
 
 
 class VersusCategories(Duel):
@@ -161,18 +158,10 @@ class VersusCategories(Duel):
         self.peak = max(v for c in cats for v in c.values.values()) or 1
         ta = sum(c.values[self.a] for c in cats)
         tb = sum(c.values[self.b] for c in cats)
-        wins_a = sum(c.values[self.a] > c.values[self.b] for c in cats)
-        wins_b = sum(c.values[self.b] > c.values[self.a] for c in cats)
         if ta != tb:
             w = self.a if ta > tb else self.b
-            text = f"{self.ds.name(w)} leads {self.fmt(max(ta, tb))}–{self.fmt(min(ta, tb))} overall"
-        else:
-            w = self.a if wins_a >= wins_b else self.b
-            text = f"Level at {self.fmt(ta)} each"
-        self.callouts.append(Callout(self.duration - self.outro + 0.2, self.duration, text, self.colors[w]))
+            self.winner = Winner(w, f"{self.fmt(max(ta, tb))} – {self.fmt(min(ta, tb))}", f"across {len(cats)} categories")
 
-    def subtitle(self) -> str:
-        return self.ds.unit
 
     def frame(self, t: float) -> Image.Image:
         im, d = self.canvas()
@@ -201,10 +190,12 @@ class VersusCategories(Duel):
                 if length >= 2:
                     xa, xb = (center - 6 - length, center - 6) if side < 0 else (center + 6, center + 6 + length)
                     d.rounded_rectangle((xa, bar_y, xb, bar_y + bar_h), radius=min(8, int(length / 2)), fill=color)
+                if p < 0.12:
+                    continue  # values appear once the bars start moving
                 vf = font(32, "bold")
                 text = self.fmt(v * p if not self.ds.integer else round(v * p))
                 tw = d.textlength(text, font=vf)
                 tx = center - 6 - length - 14 - tw if side < 0 else center + 6 + length + 14
                 d.text((tx, bar_y + bar_h / 2 - 20), text, font=vf, fill=th.ink if win else th.ink2)
         self.callout(im, d, t, self.header_bottom + 10)
-        return im
+        return self.winner_banner(im, t)

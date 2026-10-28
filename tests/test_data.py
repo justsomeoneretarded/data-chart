@@ -222,3 +222,37 @@ def test_wikipedia_retry_never_repeats_a_rejected_table(monkeypatch, tmp_path):
     with pytest.raises(DataError):
         wikipedia.retrieve(intent, tmp_path, "brief")
     assert len(seen) == len(set(seen)) == 2  # both tables tried once, then it stops
+
+
+class WBSession:
+    """Fake World Bank API with male/female population for the World."""
+    def get(self, url, params=None, timeout=None):
+        if url.endswith("/indicator"):
+            return FakeResp(data=[{"pages": 1}, [
+                {"id": "SP.POP.TOTL", "name": "Population, total"},
+                {"id": "SP.POP.TOTL.MA.IN", "name": "Population, male"},
+                {"id": "SP.POP.TOTL.FE.IN", "name": "Population, female"},
+                {"id": "SP.POP.TOTL.FE.ZS", "name": "Population, female (% of total population)"}]])
+        if url.endswith("/country"):
+            return FakeResp(data=[{"pages": 1}, [
+                {"id": "WLD", "name": "World", "region": {"id": "NA"}, "iso2Code": "1W"},
+                {"id": "ETH", "name": "Ethiopia", "region": {"id": "SSF"}, "iso2Code": "ET"}]])
+        male = "MA.IN" in url
+        rows = [{"date": str(y), "value": (3.0e9 if male else 2.99e9) + y, "countryiso3code": "WLD", "country": {"id": "1W"}} for y in (1960, 2023)]
+        return FakeResp(data=[{"pages": 1}, rows])
+
+
+def test_worldbank_male_vs_female_world(monkeypatch, tmp_path):
+    from shorts.sources import worldbank
+    monkeypatch.setattr(worldbank, "http", lambda: WBSession())
+    def pick(schema, prompt, **k):
+        wanted = prompt.split("Indicators")[0].lower()
+        return schema(indicator_id="SP.POP.TOTL.FE.IN" if "female" in wanted else "SP.POP.TOTL.MA.IN", reason="x")
+    monkeypatch.setattr(worldbank, "ask", pick)
+    intent = Intent(metric="population", subjects=["Male", "Female"], within="World", subject_type="countries",
+                    over_time=True, start_year=1950, search_queries=["x"])
+    ds = worldbank.retrieve(intent, tmp_path)
+    assert [e.name for e in ds.entities] == ["Male", "Female"]
+    assert ds.years == [1960, 2023]
+    assert ds.series[2023]["E0"] > ds.series[2023]["E1"]
+    assert ds.title == "Population of the world"
