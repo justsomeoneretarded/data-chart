@@ -32,3 +32,12 @@ def categories():
     rows = [("La Liga", 27, 36), ("Copa del Rey", 31, 20), ("Champions League", 5, 15), ("Supercopa", 15, 13), ("UEFA Super Cup", 5, 6), ("Club World Cup", 3, 5)]
     cats = [Category(l, {"E0": a, "E1": b}) for l, a, b in rows]
     return Dataset("Barcelona vs Real Madrid trophies", "trophies", "categories", ents, SRC, categories=cats).validate()
+
+def films():
+    """Long names and close values, like 'Highest-grossing films of all time' (test numbers)."""
+    rows = [("Avatar", 2.92e9), ("Avengers: Endgame", 2.80e9), ("Avatar: The Way of Water", 2.32e9), ("Titanic", 2.26e9),
+            ("Ne Zha 2", 2.2e9), ("Star Wars: The Force Awakens", 2.07e9), ("Avengers: Infinity War", 2.05e9),
+            ("Spider-Man: No Way Home", 1.92e9), ("Inside Out 2", 1.70e9), ("Jurassic World", 1.67e9)]
+    ents = [Entity(f"E{i}", n) for i, (n, _) in enumerate(rows)]
+    return Dataset("Highest-grossing films of all time", "worldwide gross (US$)", "snapshot", ents, SRC,
+                   snapshot={f"E{i}": v for i, (_, v) in enumerate(rows)}).validate()

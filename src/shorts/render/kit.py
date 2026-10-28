@@ -215,3 +215,80 @@ class Badges:
     def paste(self, canvas: Image.Image, entity_id: str, x: float, y: float, size: int):
         img, mask = self.get(entity_id, size)
         canvas.paste(img, (int(x), int(y)), mask)
+
+
+# ------------------------------------------------------------- medals & badges
+MEDALS = {
+    1: ("#ffe27a", "#f2b705", "#a87400", "#c8102e"),   # light, mid, dark, ribbon
+    2: ("#f4f6f8", "#c3c9d1", "#7d8590", "#1f4e9c"),
+    3: ("#f6c39a", "#cd7f32", "#7c4a1c", "#1b7f5a"),
+}
+
+
+@lru_cache(maxsize=64)
+def medal(rank: int, size: int) -> Image.Image:
+    """Gold / silver / bronze medal with ribbon, drawn at 4x and downsampled for smooth edges."""
+    s = size * 4
+    img = Image.new("RGBA", (s, int(s * 1.25)), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    light, mid, dark, ribbon = MEDALS[rank]
+    top = int(s * 0.25)
+    # ribbon tails
+    d.polygon([(s * .30, 0), (s * .48, 0), (s * .62, top + s * .2), (s * .44, top + s * .2)], fill=ribbon)
+    d.polygon([(s * .70, 0), (s * .52, 0), (s * .38, top + s * .2), (s * .56, top + s * .2)], fill=mix(ribbon, "#000000", 0.25))
+    # disc with a simple radial shading
+    cx, cy, r = s / 2, top + s / 2, s / 2 - 2
+    steps = 24
+    for k in range(steps):
+        t = k / (steps - 1)
+        rr = r * (1 - t * 0.55)
+        col = mix(dark, light, min(1, t * 1.4))
+        off = r * 0.12 * t
+        d.ellipse((cx - rr - off, cy - rr - off, cx + rr - off, cy + rr - off), fill=col)
+    d.ellipse((cx - r * .74, cy - r * .74, cx + r * .74, cy + r * .74), outline=dark, width=max(2, s // 40))
+    label = str(rank)
+    f = font(int(s * 0.42), "black")
+    tw = d.textlength(label, font=f)
+    d.text((cx - tw / 2, cy - s * 0.27), label, font=f, fill=dark)
+    return img.resize((size, int(size * 1.25)), Image.Resampling.LANCZOS)
+
+
+@lru_cache(maxsize=64)
+def rank_badge(rank: int, size: int, fill: str, ring: str, ink: str) -> Image.Image:
+    """Uniform round rank badge (same size and font for every rank)."""
+    s = size * 4
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((0, 0, s - 1, s - 1), fill=ring)
+    d.ellipse((s * .07, s * .07, s * .93, s * .93), fill=fill)
+    label = str(rank)
+    f = font(int(s * 0.44), "bold")
+    tw = d.textlength(label, font=f)
+    d.text(((s - tw) / 2, s * 0.21), label, font=f, fill=ink)
+    return img.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def paste(canvas: Image.Image, sprite: Image.Image, x: float, y: float):
+    canvas.paste(sprite, (int(x), int(y)), sprite)
+
+
+def ease_out_back(x: float) -> float:
+    x = min(1.0, max(0.0, x))
+    c = 1.70158
+    return 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2
+
+
+def uniform_font(d: ImageDraw.ImageDraw, labels: list[str], width: int, size: int, weight="semibold", min_size=26) -> ImageFont.FreeTypeFont:
+    """One font size for a whole set of labels: the largest at which the longest fits (min_size floor)."""
+    longest = max(labels, key=lambda l: d.textlength(l, font=font(size, weight)), default="")
+    while size > min_size and d.textlength(longest, font=font(size, weight)) > width:
+        size -= 1
+    return font(size, weight)
+
+
+def ellipsize(d: ImageDraw.ImageDraw, text: str, f: ImageFont.FreeTypeFont, width: int) -> str:
+    if d.textlength(text, font=f) <= width:
+        return text
+    while len(text) > 1 and d.textlength(text + "…", font=f) > width:
+        text = text[:-1]
+    return text.rstrip() + "…"

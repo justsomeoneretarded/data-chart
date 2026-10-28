@@ -8,7 +8,7 @@ from pathlib import Path
 from ..brief import Intent
 from ..dataset import Dataset, DataError
 from ..llm import LLMError
-from . import owid, wikipedia
+from . import owid, wikipedia, worldbank
 
 log = logging.getLogger(__name__)
 
@@ -16,10 +16,10 @@ log = logging.getLogger(__name__)
 def resolve(intent: Intent, brief: str, out: Path) -> Dataset:
     # Both sources are always tried; the order is just a best guess at which fits.
     owid_first = intent.subject_type == "countries" or bool(intent.within)
-    order = [("Our World in Data", lambda: owid.retrieve(intent, out)),
-             ("Wikipedia", lambda: wikipedia.retrieve(intent, out, brief))]
-    if not owid_first:
-        order.reverse()
+    stats = [("Our World in Data", lambda: owid.retrieve(intent, out)),
+             ("World Bank", lambda: worldbank.retrieve(intent, out))]
+    wiki = [("Wikipedia", lambda: wikipedia.retrieve(intent, out, brief))]
+    order = stats + wiki if owid_first else wiki + stats
     attempts = []
     for name, attempt in order:
         log.info("Trying %s", name)
