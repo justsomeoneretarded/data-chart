@@ -333,18 +333,26 @@ def retrieve(intent: Intent, out: Path, brief: str) -> Dataset:
     ranked = _rank_tables(tables, intent)[:10]
     summaries = [t.summary() for t in ranked]
     (out / "wiki_tables.json").write_text(json.dumps(summaries, indent=1, ensure_ascii=False))
-    errors = []
-    prompt = SPEC_PROMPT.format(brief=brief, metric=intent.metric, subjects=intent.subjects or "any/all",
-                                over_time=intent.over_time, tables=json.dumps(summaries, ensure_ascii=False))
+    errors: list[str] = []
     by_id = {t.id: t for t in ranked}
+    remaining = list(ranked)
     for attempt in range(3):
-        spec = ask(TableSpec, prompt + ("\n\nPrevious choice failed: " + errors[-1] if errors else ""), max_tokens=400)
+        if not remaining:
+            break
+        # A rejected table is removed from the list, so each retry looks at a different table.
+        summaries = [t.summary() for t in remaining]
+        prompt = SPEC_PROMPT.format(brief=brief, metric=intent.metric, subjects=intent.subjects or "any/all",
+                                    over_time=intent.over_time, tables=json.dumps(summaries, ensure_ascii=False))
+        if errors:
+            prompt += "\n\nAlready rejected (do not choose again): " + "; ".join(errors)
+        spec = ask(TableSpec, prompt, max_tokens=400)
         (out / "wiki_choice.json").write_text(spec.model_dump_json(indent=2))
         if spec.layout == "none" or spec.table_id not in by_id:
-            raise DataError("No Wikipedia table measures this: " + spec.title)
+            raise DataError("No Wikipedia table measures this" + (f" ({'; '.join(errors)})" if errors else ""))
         try:
             return build(spec, by_id[spec.table_id], intent)
         except DataError as exc:
             log.warning("Table %s rejected: %s", spec.table_id, exc)
-            errors.append(f"{spec.table_id} {spec.layout}: {exc}")
+            errors.append(f"{spec.table_id} as {spec.layout}: {exc}")
+            remaining = [t for t in remaining if t.id != spec.table_id]
     raise DataError("Wikipedia tables did not produce a valid comparison: " + "; ".join(errors))

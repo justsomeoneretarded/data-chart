@@ -14,11 +14,12 @@ log = logging.getLogger(__name__)
 
 
 def resolve(intent: Intent, brief: str, out: Path) -> Dataset:
-    if intent.subject_type == "countries":
-        order = [("Our World in Data", lambda: owid.retrieve(intent, out)),
-                 ("Wikipedia", lambda: wikipedia.retrieve(intent, out, brief))]
-    else:
-        order = [("Wikipedia", lambda: wikipedia.retrieve(intent, out, brief))]
+    # Both sources are always tried; the order is just a best guess at which fits.
+    owid_first = intent.subject_type == "countries" or bool(intent.within)
+    order = [("Our World in Data", lambda: owid.retrieve(intent, out)),
+             ("Wikipedia", lambda: wikipedia.retrieve(intent, out, brief))]
+    if not owid_first:
+        order.reverse()
     attempts = []
     for name, attempt in order:
         log.info("Trying %s", name)
