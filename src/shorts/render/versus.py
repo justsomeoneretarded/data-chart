@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 
 from ..story import Interp, moments
 from .base import Callout, Scene
-from .kit import (SAFE_BOTTOM, SAFE_LEFT, SAFE_RIGHT, SAFE_RIGHT_LOW, W, ease_out, fit, font, mix, nice_ticks)
+from .kit import (SAFE_BOTTOM, ease_in_out, SAFE_LEFT, SAFE_RIGHT, SAFE_RIGHT_LOW, W, ease_out, fit, font, mix, nice_ticks)
 
 CARD_GAP = 40
 
@@ -178,7 +178,8 @@ class VersusCategories(Duel):
         im, d = self.canvas()
         th = self.theme
         self.header(im, d, t)
-        progress = [ease_out((t - (self.intro + i * self.slot)) / min(1.0, self.slot * 0.8)) for i in range(len(self.cats))]
+        # Each category's bars grow across ~85% of its slot (no dead air between rows).
+        progress = [ease_in_out((t - (self.intro + i * self.slot + self.slot * 0.15)) / (self.slot * 0.85)) for i in range(len(self.cats))]
         totals = {e: sum(c.values[e] * p for c, p in zip(self.cats, progress)) for e in (self.a, self.b)}
         shown = sum(p > 0 for p in progress)
         self.cards(im, d, totals, caption=f"Total across {shown} of {len(self.cats)} categories" if shown else "",
