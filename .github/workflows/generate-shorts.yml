@@ -1,197 +1,100 @@
-name: Generate Shorts
+name: Generate Short
+run-name: "${{ inputs.brief }}"
 on:
-  workflow_call:
-    inputs:
-      require_source_id:
-        default: ''
-        type: string
-      require_real_data:
-        default: false
-        type: boolean
-      artifact_label:
-        default: ''
-        type: string
-      format:
-        default: Auto
-        type: string
-      brief:
-        required: true
-        type: string
-      duration:
-        default: '50'
-        type: string
-      voice:
-        default: Warguy
-        type: string
-      style:
-        default: Auto
-        type: string
-      music:
-        default: Auto
-        type: string
-      seed:
-        default: '42'
-        type: string
-      upload_to_youtube:
-        default: false
-        type: boolean
   workflow_dispatch:
     inputs:
-      format:
-        description: 'Auto: music-first Race, or Versus when the brief says vs. Explainer enables narration.'
-        default: Auto
-        type: choice
-        options: [Auto, Race, Versus, Explainer]
       brief:
-        description: 'Any comparison; real-source fast paths, otherwise a private illustrative simulation'
+        description: "What to compare, e.g. 'India vs China population 1960-2024' or 'Countries by life expectancy'"
         required: true
         type: string
+      format:
+        description: "Auto picks from the data: 2 subjects → Versus, more → Race"
+        default: Auto
+        type: choice
+        options: [Auto, Race, Versus]
       duration:
-        description: 'Target seconds, 30–90'
-        default: '50'
+        description: "Seconds (30–90)"
+        default: "50"
         type: string
-      voice:
-        description: 'Explainer only: neutral Piper unless configured otherwise'
-        default: Warguy
+      theme:
+        default: Light
         type: choice
-        options: [Warguy, Kit Laser, Female]
-      style:
-        default: Auto
-        type: choice
-        options: [Auto, Cinematic, Minimal, Energetic, Documentary]
+        options: [Light, Dark]
       music:
+        description: "Auto uses tracks in assets/music if present, else generated music"
         default: Auto
         type: choice
-        options: [Auto, Electronic, Ambient, Cinematic, None]
+        options: [Auto, Procedural, None]
       seed:
-        description: Optional integer seed
+        default: "42"
         type: string
       upload_to_youtube:
-        description: Upload privately using configured OAuth secrets
+        description: "Upload privately (needs YOUTUBE_* secrets)"
         default: false
         type: boolean
+
 permissions:
   contents: read
-concurrency:
-  group: shorts-${{ github.run_id }}-${{ inputs.artifact_label || inputs.format }}
-  cancel-in-progress: false
+
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
-      INPUT_FORMAT: ${{ inputs.format }}
       INPUT_BRIEF: ${{ inputs.brief }}
+      INPUT_FORMAT: ${{ inputs.format }}
       INPUT_DURATION: ${{ inputs.duration }}
-      INPUT_VOICE: ${{ inputs.voice }}
-      INPUT_STYLE: ${{ inputs.style }}
+      INPUT_THEME: ${{ inputs.theme }}
       INPUT_MUSIC: ${{ inputs.music }}
       INPUT_SEED: ${{ inputs.seed }}
       INPUT_UPLOAD: ${{ inputs.upload_to_youtube }}
-      HF_HUB_DISABLE_TELEMETRY: '1'
-      OMP_NUM_THREADS: '4'
+      SHORTS_MODEL: qwen3:8b
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
           cache: pip
           cache-dependency-path: pyproject.toml
-      - name: Install media tools
+
+      - name: Install FFmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y ffmpeg)
+
+      - name: Install package
         run: |
-          if ! command -v ffmpeg >/dev/null || [ ! -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf ]; then
-            sudo apt-get update -qq
-            sudo apt-get install -y ffmpeg fonts-dejavu-core
-          fi
-          ffmpeg -version
-      - name: Install Python package
-        run: |
-          if [ "$INPUT_FORMAT" = 'Explainer' ]; then
-            pip install '.[speech]'
-          else
-            pip install .
-          fi
-      - name: Validate input before model downloads
-        run: |
-          python - <<'PY'
-          import json, os
-          from pathlib import Path
-          from shorts.main import parser
-          Path('output').mkdir(exist_ok=True)
-          try:
-              args = parser().parse_args([])
-              if not 30 <= args.duration <= 90:
-                  raise ValueError('duration must be 30–90')
-              if not args.brief or not 5 <= len(args.brief.strip()) <= 1000:
-                  raise ValueError('brief must contain 5–1000 characters')
-          except (Exception, SystemExit) as exc:
-              Path('output/failure.json').write_text(json.dumps({'stage':'input validation','error':str(exc)}))
-              Path('output/production_report.md').write_text('# Invalid input\n\nCheck duration (integer 30–90), integer seed, and a brief of 5–1000 characters.')
-              raise
-          PY
-      - name: Record runner resources
-        run: |
-          mkdir -p output
-          lscpu > output/runner-resources.txt
-          free -h >> output/runner-resources.txt
-          df -h >> output/runner-resources.txt
-      - name: Install Ollama
-        run: curl --fail --show-error --location https://ollama.com/install.sh -o /tmp/install-ollama.sh && sh /tmp/install-ollama.sh
-      - name: Load Qwen3 4B
-        run: |
-          ollama serve > output/ollama.log 2>&1 &
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:11434/api/tags > /dev/null; then break; fi
-            sleep 2
-          done
-          ollama pull qwen3:4b
-      - name: Install optional publishing dependencies
-        if: inputs.upload_to_youtube
-        run: pip install 'google-api-python-client>=2,<3' 'google-auth>=2,<3'
-      - name: Restore previous-script history
-        if: inputs.format == 'Explainer'
+          if [ "$INPUT_UPLOAD" = "true" ]; then pip install '.[upload]'; else pip install .; fi
+
+      - name: Cache Ollama model
         uses: actions/cache@v4
         with:
-          path: .history
-          key: shorts-history-${{ github.run_id }}
-          restore-keys: shorts-history-
-      - name: Generate and validate video
+          path: ~/.ollama/models
+          key: ollama-${{ env.SHORTS_MODEL }}
+
+      - name: Start Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 2; done
+          ollama pull "$SHORTS_MODEL"
+
+      - name: Make the video
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-        run: python -m shorts.main
-      - name: Assert real observations in source smoke tests
-        if: inputs.require_real_data
-        env:
-          REQUIRE_SOURCE_ID: ${{ inputs.require_source_id }}
-        run: |
-          python - <<'PY'
-          import json, os
-          from pathlib import Path
-          data=json.loads(Path('output/research.json').read_text())
-          assert data.get('data_kind') == 'source observations', data.get('limitation')
-          if os.environ.get('REQUIRE_SOURCE_ID'):
-              assert data['source']['id'] == os.environ['REQUIRE_SOURCE_ID'], data['source']
-          print('Verified source observations:', data['source']['publisher'], data['start_year'], data['year'])
-          PY
-      - name: Preserve diagnostics for setup failures
-        if: failure()
+        run: python -m shorts.main --out output
+
+      - name: Summary
+        if: always()
         run: |
           mkdir -p output
-          if [ ! -f output/production_report.md ]; then
-            echo '# Workflow setup failed' > output/production_report.md
-            echo 'No completed video is claimed. Inspect the failed step in the Actions log for dependency, network, or runner setup details.' >> output/production_report.md
-          fi
-      - name: Upload video and diagnostic artifacts
+          [ -f output/production_report.md ] && cat output/production_report.md >> "$GITHUB_STEP_SUMMARY" || echo "Setup failed before generation; see the log above." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: youtube-short-output-${{ inputs.artifact_label || inputs.format }}-${{ github.run_id }}
+          name: short-${{ github.run_id }}
           path: output/
-          if-no-files-found: warn
           retention-days: 14
-      - name: Production summary
-        if: always()
-        run: |
-          if [ -f output/production_report.md ]; then cat output/production_report.md >> "$GITHUB_STEP_SUMMARY"; fi
