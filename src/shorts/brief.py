@@ -44,8 +44,9 @@ def _years(brief: str) -> tuple[int | None, int | None]:
     match = re.search(r"\b(?:last|past)\s+(\d{1,3})\s+years?\b", brief, re.I)
     if match:
         return now - int(match.group(1)), now
-    match = re.search(r"\bsince\s+(1[89]\d{2}|20\d{2})\b", brief, re.I)
-    if match:
+    match = re.search(r"\b(?:since|from|after|starting)\s+(1[89]\d{2}|20\d{2})\b", brief, re.I) or \
+        re.search(r"\b(1[89]\d{2}|20\d{2})\s*(?:-|–|—|to|until|till)\s*(?:now|today|present|date)\b", brief, re.I)
+    if match and len(found) == 1:
         return int(match.group(1)), None
     if len(found) >= 2:
         return min(found), max(found)

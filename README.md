@@ -48,7 +48,7 @@ All layouts keep content inside the Shorts safe area (clear of the caption bar a
 |---|---|---|
 | brief | — | Plain English. Naming the measure plainly works best. |
 | format | Auto | Auto / Race / Versus |
-| duration | 50 | 30–90 seconds |
+| duration | Auto | Auto sizes the video to the data (more years or items → longer, 30–90s). Or type seconds. |
 | theme | Light | Light / Dark |
 | music | Auto | Uses a random track from `assets/music/` if you add any (royalty-free, e.g. YouTube Audio Library), otherwise generated music. `None` for silence. |
 | upload_to_youtube | off | Private upload; needs `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN` secrets |

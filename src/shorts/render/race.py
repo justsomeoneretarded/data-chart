@@ -1,11 +1,13 @@
 """Bar-chart race (timeseries) and countdown reveal (snapshot)."""
 from __future__ import annotations
 
+import math
+
 from PIL import Image, ImageDraw
 
 from ..story import Interp, moments
 from .base import Callout, Scene
-from .kit import (FPS, SAFE_BOTTOM, SAFE_LEFT, SAFE_RIGHT_LOW, W, ease_out, fit, font, mix, nice_ticks)
+from .kit import (FPS, ease_in_out, SAFE_BOTTOM, SAFE_LEFT, SAFE_RIGHT_LOW, W, ease_out, fit, font, mix, nice_ticks)
 
 NAME_RIGHT = 300   # names are right-aligned to this x
 BAR_X = 322        # bars start here
@@ -161,8 +163,8 @@ class Countdown(Bars):
         n = len(self.order)
         self.slot = self.active / n
         first = self.order[0]
-        start = self.intro + (n - 1) * self.slot
-        self.callouts.append(Callout(start + 0.4, self.duration, f"#1: {self.ds.name(first)} · {self.fmt(snap[first])}", self.colors[first]))
+        start = self.intro + self.active
+        self.callouts.append(Callout(start, self.duration, f"#1: {self.ds.name(first)} · {self.fmt(snap[first])}", self.colors[first]))
 
     def subtitle(self) -> str:
         parts = [p for p in [self.ds.unit, self.ds.as_of] if p]
@@ -170,16 +172,31 @@ class Countdown(Bars):
 
     def frame(self, t: float) -> Image.Image:
         im, d = self.canvas()
+        th = self.theme
         self.header(im, d, t)
         self.axis(d, self.scale)
         n = len(self.order)
+        # Each bar grows and counts up across ~85% of its slot, so the screen keeps
+        # moving; #1 finishes exactly as the final hold begins.
+        reveal = self.slot * 0.85
+        latest = None
         for i, eid in enumerate(self.order):
-            reveal_at = self.intro + (n - 1 - i) * self.slot
-            p = ease_out((t - reveal_at) / min(0.9, self.slot * 0.9))
+            reveal_at = self.intro + (n - 1 - i) * self.slot + self.slot * 0.15
+            p = ease_in_out((t - reveal_at) / reveal)
             if p <= 0:
                 continue
+            latest = i
             value = self.ds.snapshot[eid] * p
             row = i + (1 - p) * 0.35
             self.bar(im, d, eid, row, value, self.scale, rank_label=f"{i + 1}")
+        if latest is not None:
+            # A soft pulsing marker on the newest bar keeps the screen alive between reveals.
+            eid = self.order[latest]
+            y = self.chart_top + latest * self.pitch + self.pitch / 2
+            pulse = 0.5 + 0.5 * math.sin(t * 2 * math.pi / 1.6)
+            r = 5 + 3 * pulse
+            x = (NAME_RIGHT + BAR_X) / 2
+            color = mix(th.bg, self.colors[eid], 0.35 + 0.65 * pulse)
+            d.ellipse((x - r, y - r, x + r, y + r), fill=color)
         self.callout(im, d, t, self.header_bottom + 8)
         return im
