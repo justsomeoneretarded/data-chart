@@ -113,7 +113,8 @@ def _choose_column(intent: Intent, columns: list[str], meta: dict) -> str:
     return columns[pick.index]
 
 
-def fetch(intent: Intent, chart: dict, out: Path) -> Dataset:
+def download(chart: dict, out: Path, tag: str = "") -> tuple[list[dict], list[str], dict, dict, str]:
+    """Fetch a chart's CSV + metadata. Returns rows, value columns, column metadata, metadata, url."""
     s = http()
     url = f"{BASE}/grapher/{chart['slug']}"
     params = "?v=1&csvType=full&useColumnShortNames=false"
@@ -123,9 +124,8 @@ def fetch(intent: Intent, chart: dict, out: Path) -> Dataset:
         meta = s.get(url + ".metadata.json" + params, timeout=(10, 60)).json()
     except Exception:
         meta = {}
-    (out / "source_raw.csv").write_text(csv_resp.text)
-    (out / "source_metadata.json").write_text(json.dumps(meta, indent=2))
-
+    (out / f"source_raw{tag}.csv").write_text(csv_resp.text)
+    (out / f"source_metadata{tag}.json").write_text(json.dumps(meta, indent=2))
     reader = csv.DictReader(io.StringIO(csv_resp.text))
     fields = reader.fieldnames or []
     if "Year" not in fields or "Entity" not in fields:
@@ -133,6 +133,11 @@ def fetch(intent: Intent, chart: dict, out: Path) -> Dataset:
     rows = list(reader)
     value_columns = [f for f in fields if f not in {"Entity", "Code", "Year"} and any(r.get(f) for r in rows[:500])]
     col_meta = meta.get("columns", {}) if isinstance(meta, dict) else {}
+    return rows, value_columns, col_meta, meta, url
+
+
+def fetch(intent: Intent, chart: dict, out: Path) -> Dataset:
+    rows, value_columns, col_meta, meta, url = download(chart, out)
     if intent.within and len(value_columns) >= 2:
         return _groups_within_place(intent, chart, rows, value_columns, col_meta, meta, url)
     column = _choose_column(intent, value_columns, col_meta)
@@ -243,7 +248,58 @@ def to_snapshot(ds: Dataset) -> Dataset:
     raise DataError("No single year covers all subjects")
 
 
+def _groups_from_separate_charts(intent: Intent, out: Path) -> Dataset:
+    """Groups inside one place stored as one chart per group (e.g. 'Male population', 'Female population')."""
+    series: dict[int, dict[str, float]] = {}
+    entities, evidence, urls, citation, unit = [], [], [], "", ""
+    for i, subject in enumerate(intent.subjects):
+        sub = intent.model_copy(update={"metric": f"{subject} {intent.metric}", "subjects": [], "within": None})
+        charts = search([sub.metric], [], out)
+        if not charts:
+            raise DataError(f"No chart found for '{sub.metric}'")
+        chart = choose_chart(sub, charts)
+        rows, columns, col_meta, _, url = download(chart, out, tag=f"_{i}")
+        column = _choose_column(sub, columns, col_meta)
+        place = match_names([intent.within], sorted({r["Entity"] for r in rows}))[intent.within]
+        eid = f"E{i}"
+        name = subject.strip().capitalize() if subject.islower() else subject.strip()
+        entities.append(Entity(eid, name))
+        for r in rows:
+            if r["Entity"] == place and r.get(column):
+                try:
+                    year, value = int(r["Year"]), float(r[column])
+                except ValueError:
+                    continue
+                series.setdefault(year, {})[eid] = value
+                evidence.append({"subject": name, "period": year, "value": value, "raw": r[column], "url": url})
+        info = col_meta.get(column, {})
+        citation = citation or info.get("citationShort") or ""
+        unit = unit or info.get("shortUnit") or info.get("unit") or ""
+        urls.append(url)
+    series = trim_years(series, intent.start_year, intent.end_year)
+    series = {y: row for y, row in series.items() if len(row) == len(entities)}  # only years where every group is published
+    source = Source(publisher="Our World in Data — " + (citation or "see source"), title=" + ".join(urls),
+                    url=urls[0], retrieved_at=now_iso(), license="CC BY 4.0 (Our World in Data); check underlying source terms",
+                    notes=f"{intent.within}. Sources: " + ", ".join(urls))
+    title = f"{intent.metric[:1].upper() + intent.metric[1:]} in {intent.within}" if intent.within.lower() not in ("world", "the world") else f"World {intent.metric}"
+    ds = Dataset(title=title, unit=unit, kind="timeseries", entities=entities, source=source, series=series, evidence=evidence)
+    if not intent.over_time:
+        ds = to_snapshot(ds)
+    return ds.validate()
+
+
 def retrieve(intent: Intent, out: Path) -> Dataset:
+    if intent.within and len(intent.subjects) >= 2:
+        # Prefer one chart holding every group; fall back to one chart per group.
+        try:
+            return _retrieve_single(intent, out)
+        except DataError as exc:
+            log.info("Single chart did not cover all groups (%s); trying one chart per group", exc)
+            return _groups_from_separate_charts(intent, out)
+    return _retrieve_single(intent, out)
+
+
+def _retrieve_single(intent: Intent, out: Path) -> Dataset:
     queries = list(dict.fromkeys([intent.metric] + intent.search_queries))
     charts = search(queries, intent.subjects, out)
     if not charts:

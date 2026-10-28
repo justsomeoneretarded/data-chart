@@ -144,3 +144,39 @@ def test_owid_no_matching_chart(monkeypatch, tmp_path):
     intent = Intent(metric="happiness of cats", subjects=[], subject_type="countries", over_time=False, search_queries=["x"])
     with pytest.raises(DataError):
         owid.retrieve(intent, tmp_path)
+
+
+def test_from_year_to_now():
+    assert _years("male vs female population in the world from 1950 to now") == (1950, None)
+    assert _years("GDP 1990-present") == (1990, None)
+    assert _years("Population in 2020") == (None, 2020)
+
+
+SEX_CSV = {
+    "male-population": "Entity,Code,Year,Male population\nWorld,OWID_WRL,1950,1260000000\nWorld,OWID_WRL,2023,4060000000\nIndia,IND,1950,190000000\n",
+    "female-population": "Entity,Code,Year,Female population\nWorld,OWID_WRL,1950,1270000000\nWorld,OWID_WRL,2023,4030000000\n",
+}
+
+
+class SexSession:
+    def get(self, url, params=None, timeout=None):
+        if "/api/search" in url:
+            q = params["q"].lower()
+            slug = "female-population" if "female" in q else "male-population"
+            return FakeResp(data={"results": [{"slug": slug, "title": slug.replace("-", " ").capitalize(), "type": "chart", "availableEntities": ["World"]}]})
+        for slug, text in SEX_CSV.items():
+            if f"/grapher/{slug}.csv" in url:
+                return FakeResp(text)
+        return FakeResp(data={})
+
+
+def test_owid_groups_from_separate_charts(monkeypatch, tmp_path):
+    monkeypatch.setattr(owid, "http", lambda: SexSession())
+    monkeypatch.setattr(owid, "ask", lambda schema, prompt, **k: schema(index=0, reason="match"))
+    monkeypatch.setattr(common, "ask", lambda schema, prompt, **k: schema(matches=["World"]))
+    intent = Intent(metric="population", subjects=["Male", "Female"], within="World", subject_type="countries",
+                    over_time=True, start_year=1950, search_queries=["population by sex"])
+    ds = owid.retrieve(intent, tmp_path)
+    assert [e.name for e in ds.entities] == ["Male", "Female"]
+    assert ds.series[2023] == {"E0": 4060000000.0, "E1": 4030000000.0}
+    assert ds.title == "World population"
