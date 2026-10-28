@@ -45,3 +45,28 @@ def create(path,duration,seed=42,style='Auto'):
     with wave.open(str(path),'wb') as f:
         f.setnchannels(2);f.setsampwidth(2);f.setframerate(sr);f.writeframes((audio*32767).astype('<i2').tobytes())
     return {'composer':'Original procedural electronic score','bpm':BPM,'seed':seed,'reference_audio_used':False,'license':'Generated from project code; no third-party samples','style':style}
+
+
+def prepare(out, duration: float, seed: int, style: str):
+    """Pick background music: a track from assets/music/ if any exist, else the procedural score.
+
+    Drop royalty-free tracks (e.g. from the YouTube Audio Library) into assets/music/
+    once; every run then picks one by seed, trims it and fades it out.
+    """
+    import random
+    import subprocess
+    from pathlib import Path
+
+    tracks = sorted(p for p in (Path(__file__).resolve().parents[2] / "assets" / "music").glob("*")
+                    if p.suffix.lower() in {".mp3", ".wav", ".m4a", ".ogg", ".flac"})
+    path = out / "music.wav"
+    if tracks and style != "Procedural":
+        track = random.Random(seed).choice(tracks)
+        fade = max(0.0, duration - 2.0)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(track), "-t", str(duration),
+                        "-af", f"afade=t=in:d=0.8,afade=t=out:st={fade}:d=2,loudnorm=I=-16:TP=-1.5",
+                        "-ar", "44100", "-ac", "2", str(path)], check=True)
+        return {"source": "library", "file": track.name, "note": "Royalty-free track from assets/music; check its license"}
+    info = create(path, duration, seed, "Auto" if style in ("Auto", "Procedural") else style)
+    info["source"] = "procedural"
+    return info

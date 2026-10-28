@@ -1,12 +1,4 @@
-.venv/
 __pycache__/
-.pytest_cache/
-output/
-models/
-*.wav
-*.mp4
-assets/voices/*.wav
-
 *.egg-info/
-
-.history/
+output/
+.pytest_cache/

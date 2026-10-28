@@ -1,1 +1,1 @@
-"""Source-grounded short-form data explainers."""
+"""Turn a one-line brief into a data-driven YouTube Short."""

@@ -1,75 +1,74 @@
-# Brief-driven comparison videos
+# data-chart — brief in, data Short out
 
-Run **Actions → Generate Shorts → Run workflow**, enter a brief, and select Race, Versus, or Explainer. Auto chooses Versus when the brief contains “vs” or “versus”; otherwise it chooses Race.
+Type one line, get a 1080×1920 YouTube Short built from **real published data**.
 
-Examples:
+**Actions → Generate Short → Run workflow**, then enter a brief:
 
-- `Male vs female population in the USA, 1960–2025`
-- `India vs China unemployment total percent of total labor force national estimate, 2000–2020`
-- `Countries by GDP per capita, 1980–2024`
-- `Barcelona vs Real Madrid trophies, 1950–2025` — may use the private simulation fallback if real discovery finds no usable source.
+| Brief | What you get |
+|---|---|
+| `India vs China population 1960–2024` | Head-to-head: two live counters + a line chart drawing over time |
+| `Countries by GDP, 1990–2023` | Bar-chart race of the top 10 |
+| `Countries with the highest life expectancy` | Countdown reveal, #10 → #1 |
+| `Male vs female population in the USA, 1960–2024` | Head-to-head of two groups inside one country |
+| `Barcelona vs Real Madrid trophies` | Category-by-category duel with running totals |
 
-## Data discovery
+Download the `short-<run id>` artifact when the run finishes. It contains `video.mp4`, `thumbnail.png`, `youtube_title.txt`, `youtube_description.txt`, `dataset.csv` (every value with its source text) and `production_report.md`.
 
-There is no hardcoded metric list, demographic blacklist, country alias map, or topic-specific routing. All formats use the same resolver:
+## How it works
 
-1. Download the live source catalog and country metadata.
-2. Infer search terms from the brief and rank catalog entries.
-3. Select matching indicators, geography and units from actual metadata IDs.
-4. Fetch published observations directly from the source and validate them.
-5. If discovery produces no usable comparison, generate a private illustrative simulation and record that provenance in the accompanying files.
+```
+brief ──► understand (LLM: who, what metric, which years)
+      ──► find data   Our World in Data search  → model picks one real chart → download its CSV
+                      Wikipedia search          → extract every table       → model points at columns
+      ──► dataset.json / dataset.csv            (values come from the source, never the model)
+      ──► layout chosen by the data's shape     race · countdown · versus timeline · versus categories
+      ──► render (Pillow → FFmpeg) + callouts computed from the data (overtakes, big jumps, final gap)
+      ──► quality checks → metadata → optional private upload
+```
 
-The first real-data discovery provider is the World Bank catalog, followed by general web research. It supports comparing countries on one indicator, or indicator variants (such as demographic groups) within one country. Topics absent from that catalog are researched on the public web before simulation is considered. Topic-specific legacy connectors have been removed.
+- Country statistics try **Our World in Data** first (thousands of indicators, public search API, CC BY), then Wikipedia.
+- Everything else (clubs, companies, people, cities, records) uses **Wikipedia tables**.
+- The model only interprets the brief and *chooses* among real search results / table columns. Numbers are parsed from the source by code.
+- **If no real data is found, no video is made.** The run fails with a report explaining what each source returned. Nothing is invented.
 
-The model selects metadata, never observations for a real-data run. Unknown IDs, duplicate records, nonfinite or negative values, incompatible declared source units, and insufficient comparable coverage are rejected. Model-assisted semantic selection can still be wrong; inspect the selected definitions. The longest common continuous annual interval is used. Unavailable requested years are omitted rather than invented. Animation interpolates between published annual values.
+## Layouts
 
-## Visuals and audio
+The data decides the layout; the **format** input only breaks ties.
 
-Race uses a white canvas, one short title, plain moving bars, names, values and the year. Versus uses two simple columns, names, values, proportional symbols and the year. The plan chooses symbols rather than a hardcoded metric-to-icon mapping. National flags are optional when the subjects are countries. Data provenance remains in accompanying files and the description; there are no extra source labels or leader announcements on the comparison video.
+- **Race** — yearly data, 3+ subjects. Top 10, smooth rank swaps with anti-flicker, flags, animated axis, watermark year, dimmed end state with the #1 called out.
+- **Countdown** — one value per subject (no years). Reveals from last place to #1.
+- **Versus timeline** — yearly data, 2 subjects. Two big live counters, “ahead” marker, line chart with the gap shaded in the leader's color.
+- **Versus categories** — 2 subjects across categories (e.g. competitions). Mirrored bars revealed one by one, running totals.
 
-Race and Versus use original procedural background music with no speech. Explainer adds neutral Piper narration, captions and a four-scene infographic. All formats use Qwen3 through Ollama for data discovery. Music choices include Electronic, Ambient, Cinematic and None. Duration is 30–90 seconds, default 50.
+All layouts keep content inside the Shorts safe area (clear of the caption bar and side buttons), use a fixed color per subject (never per rank), and show the source under the title.
 
-## Artifacts
+## Inputs
 
-Download the completed run's `youtube-short-output-FORMAT-RUN_ID` artifact and extract `video.mp4`. Production videos are 1080×1920, 30fps H.264/AAC. Artifacts are retained for 14 days.
+| Input | Default | Notes |
+|---|---|---|
+| brief | — | Plain English. Naming the measure plainly works best. |
+| format | Auto | Auto / Race / Versus |
+| duration | 50 | 30–90 seconds |
+| theme | Light | Light / Dark |
+| music | Auto | Uses a random track from `assets/music/` if you add any (royalty-free, e.g. YouTube Audio Library), otherwise generated music. `None` for silence. |
+| upload_to_youtube | off | Private upload; needs `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN` secrets |
 
-Artifacts include the video, thumbnail, data CSV, research, metadata, original music when enabled, storyboard, source and asset records, quality reports and logs. Real discovery also includes `discovery_candidates.json`, `discovery_selection.json`, `discovered_series.json`, and `discovered_source_response.json`. Simulations include `comparison_plan.json` and identify invented values in `research.json` and the description.
-
-Technical checks cover codecs, dimensions, duration, A/V sync, decode, black frames, unexpected silence and frozen sequences. Opening/final holds are intentional. Infrastructure, model, source and media failures can still fail runs; generation is not guaranteed error-free.
+The workflow runs `qwen3:8b` through Ollama on the free GitHub runner (model is cached between runs). Change `SHORTS_MODEL` in the workflow to trade speed for accuracy.
 
 ## Local use
 
-Requires Python 3.11+, FFmpeg, DejaVu Sans fonts, and Ollama.
-
 ```bash
-pip install -e . pytest
-ollama serve
-# In another shell:
-ollama pull qwen3:4b
-pytest -q
-python -m shorts.main --brief 'Male vs female population in the USA, 1960–2025' --format Race
+pip install -e '.[dev]'
+ollama serve & ollama pull qwen3:8b
+python -m shorts.main --brief "Countries by CO2 emissions per capita, 1990-2022" --out runs/co2
+python -m shorts.main --dataset runs/co2/dataset.json --theme Dark --out runs/co2-dark   # re-render, no search
+SHORTS_OFFLINE=1 pytest -q
 ```
 
-Use a fresh output directory per run. `--preview` generates 540×960 diagnostics. `SHORTS_MODEL` and `OLLAMA_URL` configure the discovery model/server. The seed affects model sampling and music; source revisions and encoders can change output across environments.
+## Limits
 
-For Explainer, install `pip install -e '.[speech]'`. The voice is neutral `en_US-ljspeech-medium`; see [voice setup](assets/voices/README.md). Chatterbox performance and unrestricted narration remain unverified.
+- Coverage is whatever OWID and Wikipedia publish. Very niche or very recent topics may have no table.
+- The model can still choose the wrong chart or column. Check `dataset.csv` against the source link (in the description) before publishing.
+- Timeline animation interpolates between published yearly values.
 
-## Optional private upload
-
-Generation and artifact delivery are the default; uploading is off. To enable private YouTube upload, configure OAuth secrets `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN`. Channel integration remains unverified. Custom thumbnail upload and automatic pinned comments are not implemented.
-
-## Troubleshooting
-
-- Inspect `pipeline.log`, `failure.json`, and `production_report.md` for failures.
-- Inspect `discovery_report.json` to see why real discovery chose simulation.
-- Review selected series and units when the comparison is unexpected.
-- Missing national flags do not block rendering.
-- Ollama is needed for all formats; speech models are needed only for Explainer.
-
-## Web research fallback
-
-If catalog discovery fails, the workflow now searches the public web, opens candidate pages and relevant discovered links, selects relevant sources, and extracts numerical records with exact quotes. It uses public search without an API key. Every accepted number must occur literally in its quoted source passage; every historical year must also occur in the quote. Sources, raw downloaded pages, hashes, retrieval times, search results and evidence records are retained in the artifact.
-
-Sources containing current category counts produce a category comparison rather than an invented historical timeline. For example, Versus can compare Barcelona and Real Madrid by comparable named competition from their honours pages. Undated source snapshots show no historical year. The workflow does not infer zero from omitted categories or claim an all-competition total from incomplete categories. Historical requests still require actual dated source observations; otherwise they can fall back to the already-enabled private simulation mode.
-
-Search availability, readable page content, source freshness and model-assisted interpretation remain limitations. Exact quotes establish numerical grounding, not universal factual verification: archived pages can be stale, and definitions can differ. Inspect `web_evidence.json`, `web_findings.json`, `web_search_results.json` and `web_fetch_report.json`. Dynamic pages, login-only datasets, PDFs and arbitrary CSV schemas are not yet supported by this reader. The source-search path is general; there is no football-specific data adapter or hardcoded trophy count.
+Fonts: Inter (SIL Open Font License, `assets/fonts/LICENSE.txt`).

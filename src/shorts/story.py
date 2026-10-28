@@ -1,61 +1,80 @@
-import json
-import os
-from typing import Literal
-from pydantic import BaseModel, Field, ConfigDict
-import requests
+"""Find the moments worth pointing out in any dataset (overtakes, records, the gap at the end).
 
-class Scene(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    kind: Literal['hook','bars','contrast','takeaway']
-    text: str = Field(min_length=5,max_length=120)
-    narration: str = Field(min_length=10,max_length=550)
-    claim_ids: list[str]
-class Story(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    title: str = Field(min_length=10,max_length=95)
-    scenes: list[Scene] = Field(min_length=4,max_length=4)
+These become on-screen callouts, so every video tells a small story without narration.
+Everything here is computed from the data; nothing is generated.
+"""
+from __future__ import annotations
 
-def facts(data):
-    rows=data['rows']; unit=data['unit']
-    claims={f'R{i}':f"{r['name']}: {r['value']:,.1f} {unit} ({data['year']})" for i,r in enumerate(rows)}
-    claims['D']=data['definition']; claims['L']=data['limitation']
-    claims['G']=f"Gap between the first and last displayed entries: {rows[0]['value']-rows[-1]['value']:,.1f} {unit}."
-    return claims
+from dataclasses import dataclass
 
-def fallback(data):
-    c=facts(data)
-    return Story(title=f"What {data['metric'].lower()} rankings really show"[:95], scenes=[
-        Scene(kind='hook',text='THE RANKING IS ONLY HALF THE STORY',narration=f"Which subjects lead this measure? Before comparing {data['metric'].lower()}, we need to know what the number actually measures.",claim_ids=['D']),
-        Scene(kind='bars',text=f"{data['metric'].upper()}",narration=f"In this comparison, {c['R0']}. Next is {c['R1']}. These entries use the same reference year.",claim_ids=['R0','R1']),
-        Scene(kind='contrast',text='LOOK AT THE DISTANCE',narration=f"{c['G']} {c['D']} A ranking alone hides both the size of the difference and the meaning of the measure.",claim_ids=['G','D']),
-        Scene(kind='takeaway',text='COMPARE THE MEASURE. CHECK THE YEAR.',narration=f"{c['L']} Read these figures as a snapshot of this measure, not a complete verdict on a subject. The source and full comparison are included with this video.",claim_ids=['L'])])
+import numpy as np
 
-def validate_story(story, data):
-    c=facts(data)
-    if [s.kind for s in story.scenes] != ['hook','bars','contrast','takeaway']:
-        raise ValueError('Story must have hook, bars, contrast, takeaway')
-    for s in story.scenes:
-        if not s.claim_ids or any(k not in c for k in s.claim_ids):
-            raise ValueError('Unmapped claim')
-        # Free-form model numerical/causal assertions are disallowed. The model may
-        # choose presentation text; narration is assembled from reviewed facts below.
-        if any(ch.isdigit() for ch in s.text):
-            raise ValueError('Heading must not introduce numerical claims')
-    return story
+from .dataset import Dataset
 
-def plan(data, mode='ollama'):
-    base=fallback(data)
-    if mode=='editorial': return base, 'Deterministic editorial fallback (explicit selection)'
-    prompt = f'''/no_think\nCreate original short, non-sensational presentation headings and a title for this evidence. Do not invent explanations or numbers. Return the exact supplied JSON structure; keep narration and claim_ids UNCHANGED. Only change title and scene text. Evidence: {json.dumps(facts(data))}. Structure: {base.model_dump_json()}'''
-    errors=[]
-    for attempt in range(3):
-        try:
-            r=requests.post(os.getenv('OLLAMA_URL','http://127.0.0.1:11434')+'/api/generate',json={'model':'qwen3:4b','prompt':prompt,'format':Story.model_json_schema(),'stream':False,'think':False,'keep_alive':0,'options':{'temperature':0.6,'num_predict':1800,'num_ctx':4096,'seed':int(os.getenv('SHORTS_SEED','42'))}},timeout=(10,600));r.raise_for_status()
-            story=validate_story(Story.model_validate_json(r.json()['response']),data)
-            # Authoritative narration is constrained to the audited evidence composer.
-            for scene, original in zip(story.scenes,base.scenes):
-                scene.narration=original.narration;scene.claim_ids=original.claim_ids
-            return story,'Qwen3 4B headings/title; evidence-composed narration'
-        except (ValueError,KeyError,requests.RequestException) as exc:
-            errors.append(str(exc));prompt+='\nCorrect the schema and do not put numbers in headings.'
-    raise RuntimeError('Qwen planning failed after 3 attempts: '+'; '.join(errors))
+
+@dataclass
+class Moment:
+    year: float
+    text: str
+    entity_id: str
+    weight: float
+
+
+class Interp:
+    """Piecewise-linear value of each entity at any (fractional) year, None outside its data."""
+
+    def __init__(self, ds: Dataset):
+        self.points: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+        for e in ds.entities:
+            pts = sorted((y, row[e.id]) for y, row in ds.series.items() if e.id in row)
+            if pts:
+                self.points[e.id] = (np.array([p[0] for p in pts], float), np.array([p[1] for p in pts], float))
+
+    def at(self, year: float) -> dict[str, float]:
+        out = {}
+        for eid, (xs, ys) in self.points.items():
+            if xs[0] - 1e-9 <= year <= xs[-1] + 1e-9:
+                out[eid] = float(np.interp(year, xs, ys))
+        return out
+
+
+def moments(ds: Dataset, max_count: int = 4) -> list[Moment]:
+    if ds.kind != "timeseries":
+        return []
+    interp = Interp(ds)
+    years = ds.years
+    found: list[Moment] = []
+    leader = None
+    # Sample finely so overtakes between annual points are dated sensibly.
+    for year in np.linspace(years[0], years[-1], max(2, (years[-1] - years[0]) * 4 + 1)):
+        values = interp.at(year)
+        if len(values) < 2:
+            continue
+        top = max(values, key=values.get)
+        if leader and top != leader and leader in values:
+            if values[top] < values[leader] * 1.01:
+                continue  # not a clear overtake yet; avoid flip-flopping on near-ties
+            found.append(Moment(year, f"{ds.name(top)} overtakes {ds.name(leader)}", top, 3.0))
+        leader = top
+    # Biggest single-year jump by any entity (only if notable)
+    best = None
+    for eid, (xs, ys) in interp.points.items():
+        for i in range(1, len(xs)):
+            if ys[i - 1] > 0 and xs[i] - xs[i - 1] <= 1.5:
+                change = (ys[i] - ys[i - 1]) / ys[i - 1]
+                if best is None or abs(change) > abs(best[0]):
+                    best = (change, eid, xs[i])
+    if best and abs(best[0]) >= 0.25:
+        change, eid, year = best
+        word = "jumps" if change > 0 else "drops"
+        found.append(Moment(year, f"{ds.name(eid)} {word} {abs(change) * 100:.0f}% in {int(year)}", eid, 1.0))
+    # Keep the strongest, spread out in time.
+    found.sort(key=lambda m: -m.weight)
+    span = max(1, years[-1] - years[0])
+    chosen: list[Moment] = []
+    for m in found:
+        if all(abs(m.year - c.year) > span * 0.14 for c in chosen):
+            chosen.append(m)
+        if len(chosen) >= max_count:
+            break
+    return sorted(chosen, key=lambda m: m.year)
